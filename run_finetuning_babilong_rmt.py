@@ -460,11 +460,8 @@ if __name__ == '__main__':
                     logger.info(f'generated: {o}')
                     # print(f"gt: {data['target_text'][i]}, generated {o}")
                     generation_outputs[i] = o.split('<|endoftext|>')[0].strip()
-<<<<<<< Updated upstream
                     if 'GEN' in generation_outputs[i]:
-                        generation_outputs[i] = generation_outputs[i].split('GEN')[1]
-=======
->>>>>>> Stashed changes
+                        generation_outputs[i] = generation_outputs[i].split('GEN')[-1]
             metrics['exact_match'] = np.mean([text == pred for text, pred in zip (batch['target_text'], generation_outputs)])
         return metrics
     # HF datasets can compute metrics on each gpu process and then aggregate them on process with rank 0
@@ -492,11 +489,8 @@ if __name__ == '__main__':
                 if '<|endoftext|>' in o:
                     # print(f"gt: {data['target_text'][i]}, generated {o}")
                     generation_outputs[i] = o.split('<|endoftext|>')[0].strip()
-<<<<<<< Updated upstream
                     if 'GEN' in generation_outputs[i]:
-                        generation_outputs[i] = generation_outputs[i].split('GEN')[1]
-=======
->>>>>>> Stashed changes
+                        generation_outputs[i] = generation_outputs[i].split('GEN')[-1]
             metrics['exact_match'] = np.mean([text == pred for text, pred in zip (data['target_text'], generation_outputs)])
 
             if args.show_valid_examples > 0:
