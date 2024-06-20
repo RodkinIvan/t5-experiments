@@ -25,16 +25,20 @@ class DPFP:
 
 class AssociativeLayerWrapper(torch.nn.Module):
 
-    def __init__(self, layer, d_model, num_mem_tokens, d_mem, correction=True, info=None) -> None:
+    def __init__(self, layer, d_model,  num_mem_tokens, d_mem, n_heads=4, correction=True, info=None) -> None:
         super().__init__()
         self.info = info
         self.seg_num = 0
         self.d_model = d_model
         self.num_mem_tokens = num_mem_tokens
         self.d_mem = d_mem
+        self.n_heads = n_heads
 
         nu = 3
         self.d_key = 2 * nu * d_mem
+
+        assert self.d_mem % n_heads == 0 and self.d_model % n_heads == 0
+
         self.phi = DPFP(nu)
         # self.d_key = d_mem
         # self.phi = torch.nn.Identity()
@@ -43,11 +47,11 @@ class AssociativeLayerWrapper(torch.nn.Module):
         # torch.nn.init.zeros_(self.W_mq.weight)
         self.W_mk = torch.nn.Linear(d_model, d_mem, bias=False)
         self.W_mv = torch.nn.Linear(d_model, d_model, bias=False)
+        self.W_mb = torch.nn.Linear(d_model, n_heads)
         torch.nn.init.zeros_(self.W_mv.weight)
-        self.W_mb = torch.nn.Linear(d_model, 1)
 
-        self.W_mem = torch.zeros(1, self.d_key, d_model)
-        self.z = torch.zeros(1, self.d_key)
+        self.W_mem = torch.zeros(1, n_heads ,self.d_key // n_heads, d_model // n_heads)
+        self.z = torch.zeros(1, n_heads, self.d_key // n_heads)
         self.W_mem.requires_grad_(False)
         self.z.requires_grad_(False)
         
@@ -60,20 +64,33 @@ class AssociativeLayerWrapper(torch.nn.Module):
         self.generate_mode = False
         self.first_seg = True
         self.correction = correction
-
+        
+    def _to_heads(self, x):
+        bsz, seq_len, d_model = x.shape
+        x = x.reshape(bsz, seq_len, self.n_heads, d_model // self.n_heads)
+        x = x.permute(0, 2, 1, 3)
+        return x
+    
+    def _from_heads(self, x):
+        bsz, n_heads, seq_len, d_head = x.shape
+        x = x.permute(0, 2, 1, 3).reshape(bsz, seq_len, n_heads * d_head)
+        return x
     def associate(self, hidden_states):
+        bsz, seq_len, d_model = hidden_states.shape
 
         self.W_mem = self.W_mem.to(hidden_states.device)
         self.z = self.z.to(hidden_states.device)
-        
-        mq = self.phi(self.W_mq(hidden_states)) # (bsz, seq_len, 2d_mem * nu)
+
+        q = self._to_heads(self.W_mq(hidden_states))
+        mq = self.phi(q) # (bsz, n_heads, seq_len, 2 * d_head * nu)
 
         # crutch for dataparallel
         # mq += 0 * self.W_mb(hidden_states).sum() * self.W_mk(hidden_states).sum() * self.W_mv(hidden_states).sum() 
 
-        num = torch.einsum('ijk,ikt->ijt', mq, self.W_mem)
-        denom = torch.einsum("ik,ijk->ij", self.z, mq)[..., None] + 1e-5
-        hidden_states = num / denom
+        num = torch.einsum('ihjk,ihkt->ihjt', mq, self.W_mem)
+        denom = torch.einsum("ihk,ihjk->ihj", self.z, mq)[..., None] + 1e-5
+        hidden_states = num / denom # (bsz, n_heads, seq_len, d_model // n_heads)
+        hidden_states = hidden_states.permute(0, 2, 1, 3).reshape(bsz, seq_len, d_model)
 
         return hidden_states
     
@@ -95,12 +112,13 @@ class AssociativeLayerWrapper(torch.nn.Module):
 
         self.W_mem = self.W_mem.to(mem_tokens.device)
         self.z = self.z.to(mem_tokens.device)
+        k = self._to_heads(self.W_mk(mem_tokens))
+        mk = self.phi(k)
 
-        mk = self.phi(self.W_mk(mem_tokens))
-        new_mv = self.W_mv(mem_tokens) # (bsz, num_mem_tokens, d_model)
+        new_mv = self._to_heads(self.W_mv(mem_tokens)) # (bsz, n_heads, num_mem_tokens, d_model)
         if not self.first_seg:
-            num = torch.einsum('ijk,ikt->ijt', mk, self.W_mem)
-            denom = torch.einsum("ij,ikj->ik", self.z, mk)[..., None] + 1e-5
+            num = torch.einsum('ihjk,ihkt->ihjt', mk, self.W_mem)
+            denom = torch.einsum("ihj,ihkj->ihk", self.z, mk)[..., None] + 1e-5
             prev_mv = num / denom
             if self.correction:
                 new_info_coef = 1 - denom / (torch.linalg.norm(mk, dim=-1) ** 2 + 1e-5)[..., None]
@@ -119,26 +137,27 @@ class AssociativeLayerWrapper(torch.nn.Module):
         # new_info_coef = torch.clip(1 - old_norm / (new_norm + 1e-5), -10, 10)[..., None].detach()
         # new_info_coef = 1 - denom
 
-        mb = torch.sigmoid(self.W_mb(mem_tokens))[..., 0]
+        mb = torch.sigmoid(self.W_mb(mem_tokens)).permute(0, 2, 1)
 
-        associations =  torch.einsum('ijk,ijt,ij->ikt', mk, mv, mb) # (bsz, d_mem, d_model)
+        associations =  torch.einsum('ihjk,ihjt,ihj->ihkt', mk, mv, mb) # (bsz, d_mem, d_model)
+
         self.W_mem = self.W_mem + associations
 
-        self.z = self.z + (new_info_coef*mk).sum(dim=1)
+        self.z = self.z + (new_info_coef*mk).sum(dim=-2)
         # self.z = self.z + (new_info_coef*mb[..., None]*mk).sum(dim=1)
         self.seg_num += 1
 
 
     def zero_mem(self):
         self.first_seg = True
-        self.W_mem = torch.zeros(1, self.d_key, self.d_model)
-        self.z = torch.zeros(1, self.d_key)
+        self.W_mem = torch.zeros(1, self.n_heads, self.d_key // self.n_heads, self.d_model // self.n_heads)
+        self.z = torch.zeros(1, self.n_heads, self.d_key // self.n_heads)
         self.seg_num = 0
 
 
 
 class AssociativeMemoryCell(torch.nn.Module):
-    def __init__(self, base_model, num_mem_tokens, d_mem, layers_attr: str = 'transformer.h', wrap_pos=True, correction=True):
+    def __init__(self, base_model, num_mem_tokens, d_mem, layers_attr: str = 'transformer.h', wrap_pos=True, correction=True, n_heads=1):
         super().__init__()
         self.model = base_model
         self.num_mem_tokens = num_mem_tokens
@@ -154,12 +173,13 @@ class AssociativeMemoryCell(torch.nn.Module):
         
         for i in range(len(self.layers)):
             self.layers[i] = AssociativeLayerWrapper(
-                self.layers[i], 
-                self.d_model, 
-                self.num_mem_tokens, 
-                self.d_mem, 
-                correction,
-                info={'layer': i}
+                layer=self.layers[i], 
+                d_model=self.d_model, 
+                num_mem_tokens=self.num_mem_tokens, 
+                d_mem=self.d_mem,
+                correction=correction,
+                info={'layer': i},
+                n_heads=n_heads
             )
         self.create_memory(num_mem_tokens)
         self.wrap_pos = wrap_pos

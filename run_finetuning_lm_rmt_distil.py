@@ -91,6 +91,7 @@ parser.add_argument('--input_size', type=int, default=None, help='maximal input 
 parser.add_argument('--block_size', type=int, default=None, help='number of real tokens in block')
 parser.add_argument('--num_mem_tokens', type=int, default=None, help='number of memory tokens.')
 parser.add_argument('--d_mem', type=int, default=None, help='number of rows in associative matrix')
+parser.add_argument('--n_heads', type=int, default=None, help='number of heads in associative matrix')
 parser.add_argument('--max_n_segments', type=int, default=1, help='maximal segment number')
 parser.add_argument('--max_val_segments', type=int, default=1, help='maximal segment number on validation')
 parser.add_argument('--vary_n_segments', action='store_true', default=False, help='Randomly choose segment number from 1 to max_n_segments')
@@ -199,7 +200,7 @@ if __name__ == '__main__':
                 x['text'] = x['text'].replace('<unk>', tokenizer.unk_token)
                 return x
     
-            raw_datasets = datasets.load_dataset('wikitext', args.task_name)
+            raw_datasets = datasets.load_dataset('Salesforce/wikitext', args.task_name)
 
             # should it really be like this?
             if 'wikitext-2' not in args.task_name:
@@ -328,8 +329,12 @@ if __name__ == '__main__':
             return collated
 
     with accelerator.main_process_first():
-        train_dataset = Dataset.from_dict(group_texts(tokenized_datasets['train'].to_dict(), block_size, history_size))
+        logger.info('starting grouping texts')
+        # train_dataset = Dataset.from_dict(group_texts(tokenized_datasets['train'].to_dict(), block_size, history_size))
+        train_dataset = tokenized_datasets["train"].map(lambda x: group_texts(x, block_size, history_size),
+                                                        batched=True, desc=f"Grouping train in chunks of {block_size} and history {history_size}")
         valid_dataset = Dataset.from_dict(group_texts(tokenized_datasets['validation'].to_dict(), block_size, val_history_size))
+        logger.info('ended grouping texts')
     kwargs = {'pin_memory': True, 'num_workers': args.data_n_workers}
     # shuffle train data each epoch (one loop over train_dataset)
     per_worker_batch_size = args.batch_size * args.gradient_accumulation_steps
@@ -434,6 +439,9 @@ if __name__ == '__main__':
         )
         if args.d_mem is not None:
             mem_cell_args['d_mem'] = args.d_mem
+        
+        if args.n_heads is not None:
+            mem_cell_args['n_heads'] = args.n_heads
         
         if args.num_mem_tokens is not None:
             mem_cell_args['num_mem_tokens'] = args.num_mem_tokens

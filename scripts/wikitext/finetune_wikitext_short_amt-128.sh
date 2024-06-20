@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=3,4,5,6
+export CUDA_VISIBLE_DEVICES=1,2,3,4
 NP=4 # ./test_bert_sparse_pretrain_train_valid.sh
 set -e
 cd ../..
@@ -17,7 +17,6 @@ TASK_NAME=wikitext-103-v1
 ITERS=36000
 TBS=32
 
-ALPHAS=(1)
 MAX_N_SEGMENTSS=(8)
 MAX_VAL_SEGMENTSS=(15)
 MEMORY_SIZES=(16)
@@ -28,10 +27,11 @@ BSS=(1)
 
 TEACHER=irodkin/gpt2-wiki103
 D_MEM=96
+N_HEADS=1
 
 
 
-for N in 2
+for N in 4
 do
 
 for MODEL_NAME in $MODEL
@@ -95,14 +95,15 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --optimizer AdamW  --weight_decay 0.01 \
         --lr ${LR} --lr_scheduler $SCHEDULER --num_warmup_steps 1000 \
         --data_n_workers 2 \
-        --log_interval 100 --valid_interval 500 \
+        --log_interval 50 --valid_interval 250 \
         --show_valid_examples 5 \
         --early_stopping_patience 15 \
         --seed $(($N+42*$j)) \
         --clip_grad_value 5.0 \
         --save_best \
-        --tokenizer 'gpt2' \
-        --d_mem $D_MEM
+        --tokenizer 'openai-community/gpt2' \
+        --d_mem $D_MEM \
+        --n_heads $N_HEADS
 done
 done
 done
