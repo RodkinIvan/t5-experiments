@@ -52,6 +52,7 @@ parser = HfArgumentParser(TrainerArgs)
 
 parser.add_argument('--rwkv_tokenizer', type=str, default=None, help='path or name of pre-trained HF Tokenizer')
 parser.add_argument('--task_name', type=str, help="Task name, wikitext, ...")
+parser.add_argument('--tokenized_dataset', type=str, help="Tokenized dataset, ...", default=None)
 parser.add_argument('--validate_only', action='store_true', default=False,
                     help='Skip training and run only validation. (default: False)')
 parser.add_argument('--working_dir', type=str, default='.',
@@ -117,7 +118,8 @@ parser.add_argument('--k2', type=int, default=-1, help='number of last segments 
 parser.add_argument('--freeze_model_weights', action='store_true', default=False,
                     help='Stop training all model weights except memory layers')
 parser.add_argument('--backbone_cpt', type=str, default=None, help='backbone model checkpoint path')
-
+parser.add_argument('--no_denom', action='store_true', default=None,
+                    help='use no denominator in ARMT')
 
 # tokenizer
 # todo: add wordpiece tokenizers support?
@@ -194,7 +196,10 @@ if __name__ == '__main__':
     logger.info(f'preparing dataset for {args.task_name}')
 
     with accelerator.main_process_first():
-        if 'wikitext' in args.task_name:
+        if args.tokenized_dataset is not None:
+            tokenized_datasets = datasets.load_dataset(args.tokenized_dataset)
+            tokenized_datasets.remove_columns('text')
+        elif 'wikitext' in args.task_name:
             
             def process_unk(x):
                 x['text'] = x['text'].replace('<unk>', tokenizer.unk_token)
@@ -252,11 +257,11 @@ if __name__ == '__main__':
     id_pad_value = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
     if args.sliding_window:
         def collate_fn(batch):
-            input_ids = [torch.tensor(b['input_ids']) for b in batch]
+            input_ids = [torch.tensor(b['input_ids']).long() for b in batch]
             input_lens = [el.shape[-1] for el in input_ids]
 
-            labels = [torch.tensor(b['labels']) for b in batch]
-            attention_mask = [torch.tensor(b['attention_mask']) for b in batch]
+            labels = [torch.tensor(b['labels']).long() for b in batch]
+            attention_mask = [torch.tensor(b['attention_mask']).long() for b in batch]
             input_ids = pad_sequence(input_ids, padding_value=id_pad_value).T
             labels = pad_sequence(labels, padding_value=-100).T
             attention_mask = pad_sequence(attention_mask, padding_value=0).T
@@ -285,9 +290,9 @@ if __name__ == '__main__':
             return collated
     else:
         def collate_fn(batch, valid=False):
-            input_ids = [torch.tensor(b['input_ids'][::-1]) for b in batch]
-            labels = [torch.tensor(b['labels'][::-1]) for b in batch]
-            attention_mask = [torch.tensor(b['attention_mask'][::-1]) for b in batch]
+            input_ids = [torch.tensor(b['input_ids'][::-1]).long() for b in batch]
+            labels = [torch.tensor(b['labels'][::-1]).long() for b in batch]
+            attention_mask = [torch.tensor(b['attention_mask'][::-1]).long() for b in batch]
             input_ids = pad_sequence(input_ids, padding_value=id_pad_value).T.flip(1)
             labels = pad_sequence(labels, padding_value=-100).T.flip(1)
             attention_mask = pad_sequence(attention_mask, padding_value=0).T.flip(1)
@@ -445,6 +450,8 @@ if __name__ == '__main__':
         
         if args.num_mem_tokens is not None:
             mem_cell_args['num_mem_tokens'] = args.num_mem_tokens
+        if args.no_denom is not None:
+            mem_cell_args['use_denom'] = not args.no_denom
 
         cell = memory_cell_cls(**mem_cell_args)
         model = recurrent_wrapper_cls(cell, 
@@ -452,6 +459,7 @@ if __name__ == '__main__':
                                       max_n_segments=args.max_n_segments, 
                                       vary_n_segments=args.vary_n_segments,
                                       k2=args.k2,
+                                      sliding_window=args.prev_seg_kv
         )
 
         if args.distillator_cls is not None:
@@ -573,7 +581,6 @@ if __name__ == '__main__':
                       batch_metrics_fn=batch_metrics_fn,
                       forward_kwargs={
                           'input_segmented': getattr(args, 'random_segment_size', False),
-                          'sliding_window': getattr(args, 'prev_seg_kv', False)
                       },
                       generate_kwargs={})
 
