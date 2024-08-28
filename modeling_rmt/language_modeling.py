@@ -4,7 +4,7 @@ from torch.nn import CrossEntropyLoss
 from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 
 class MemoryCell(torch.nn.Module):
-    def __init__(self, base_model, num_mem_tokens, wrap_pos=True):
+    def __init__(self, base_model, num_mem_tokens, wrap_pos=False):
         super().__init__()
         self.model = base_model
         self.create_memory(num_mem_tokens)
@@ -152,8 +152,8 @@ class RecurrentWrapper(torch.nn.Module):
                 output_attentions=None, 
                 output_hidden_states=None,
                 input_segmented=False,
-                sliding_window=False,
                 ):
+        sliding_window = getattr(self.rmt_config, 'sliding_window', False)
         memory_state = None
         if input_segmented:
             n_segs = input_ids.shape[1] if not (input_ids is None) else inputs_embeds.shape[1]
