@@ -92,6 +92,7 @@ parser.add_argument('--input_size', type=int, default=None, help='maximal input 
 parser.add_argument('--block_size', type=int, default=None, help='number of real tokens in block')
 parser.add_argument('--num_mem_tokens', type=int, default=None, help='number of memory tokens.')
 parser.add_argument('--d_mem', type=int, default=None, help='number of rows in associative matrix')
+parser.add_argument('--layers_attr', type=str, default=None, help='attribute of model, which contains layers')
 parser.add_argument('--n_heads', type=int, default=None, help='number of heads in associative matrix')
 parser.add_argument('--max_n_segments', type=int, default=1, help='maximal segment number')
 parser.add_argument('--max_val_segments', type=int, default=1, help='maximal segment number on validation')
@@ -239,7 +240,7 @@ if __name__ == '__main__':
 
     def group_texts(examples, block_size, history_size=None):
         concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-        total_length = len(concatenated_examples[list(examples.keys())[0]])
+        total_length = len(concatenated_examples['input_ids'])
 
         if history_size is None:
             result = {
@@ -248,9 +249,13 @@ if __name__ == '__main__':
             }
         else:
             result = {
-                k: [t[max({0, i - history_size - block_size}) : i] for i in range(history_size + block_size, total_length, block_size)]
+                k: [t[i - history_size - block_size : i] for i in range(history_size + block_size, total_length, block_size)]
                 for k, t in concatenated_examples.items()
             }
+            for i in range(len(result['input_ids'])):
+                if len(result['input_ids'][i]) != history_size + block_size:
+                    print(i, len(result['input_ids'][i]), history_size, block_size)
+                    assert False
         result["labels"] = result["input_ids"].copy()
         return result
 
@@ -352,7 +357,7 @@ if __name__ == '__main__':
     # batch sample i is a continuation of sample i of the previous batch
     class alignedDataLoader(DataLoader):
         def __iter__(self):
-            all_inds = np.arange(len(self.dataset) // self.batch_size * self.batch_size)
+            all_inds = np.arange((len(self.dataset) // self.batch_size) * self.batch_size)
             all_inds = all_inds.reshape(self.batch_size, -1)
             for batch_ind in range(all_inds.shape[1]):
                 batch = [self.dataset[int(ind)] for ind in all_inds[:, batch_ind]]
@@ -362,7 +367,7 @@ if __name__ == '__main__':
     valid_dataloader = None
     logger.info(f'preparing validation data from {args.task_name}')
     valid_dataloader = alignedDataLoader(valid_dataset, batch_size=per_worker_batch_size,
-                                         collate_fn=lambda x: collate_fn(x, valid=True), shuffle=False, drop_last=True, **kwargs)
+                                         collate_fn=lambda x: collate_fn(x, valid=True), shuffle=False, drop_last=False, **kwargs)
 
     # get test dataset
     
@@ -444,6 +449,9 @@ if __name__ == '__main__':
         )
         if args.d_mem is not None:
             mem_cell_args['d_mem'] = args.d_mem
+
+        if args.layers_attr is not None:
+            mem_cell_args['layers_attr'] = args.layers_attr
         
         if args.n_heads is not None:
             mem_cell_args['n_heads'] = args.n_heads
@@ -469,10 +477,18 @@ if __name__ == '__main__':
 
         ## load cpt of rmt
         if args.model_cpt and args.model_cpt != 'None':
-            model_cpt = os.path.join(args.model_cpt, "model_best/pytorch_model.bin")
-            cpt = torch.load(model_cpt, map_location='cpu')
-            model.load_state_dict(cpt, strict=False)
-            logger.info(f'Loaded RMT state dict from: {args.model_cpt}')
+            if 'rwkv' not in args.model_cpt:
+                model_cpt = os.path.join(args.model_cpt, "model_best/pytorch_model.bin")
+                cpt = torch.load(model_cpt, map_location='cpu')
+                model.load_state_dict(cpt)
+                logger.info(f'Loaded RMT state dict from: {args.model_cpt}')
+            else:
+                import safetensors
+                model_cpt = os.path.join(args.model_cpt, "model_best/model.safetensors")
+                cpt = safetensors.torch.load_file(model_cpt)
+                w = model.load_state_dict(cpt, strict=False)
+                model.memory_cell.model.tie_weights()
+                logger.info(f'loaded rwkv with mis w {w}')
 
 
     def to_freeze(name):
