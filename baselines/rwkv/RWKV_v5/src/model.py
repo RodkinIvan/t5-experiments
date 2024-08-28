@@ -94,7 +94,7 @@ class Block(nn.Module):
             self.drop0 = nn.Dropout(p = dropout)
             self.drop1 = nn.Dropout(p = dropout)
 
-    @TCompileBaseline
+    # @TCompileBaseline
     def forward(self, x, last_state: BlockState):
         if self.layer_id == 0:
             x = self.ln0(x)
@@ -615,12 +615,16 @@ class RWKV(nn.Module):
         return -1
 
     # @TCompileBaseline
-    def forward(self, idx: torch.Tensor, last_shift_states: torch.Tensor = None,
+    def forward(self, idx: torch.Tensor, embs = None, last_shift_states: torch.Tensor = None,
                 last_wkv_states: torch.Tensor = None):
-        B, T = idx.size()
-        assert T <= self.ctx_len, "Cannot forward, model ctx_len is exhausted."
-
-        x = self.emb(idx)
+        if embs is None:
+            B, T = idx.size()
+            assert T <= self.ctx_len, "Cannot forward, model ctx_len is exhausted."
+            x = self.emb(idx)
+        else:
+            B, T, _ = embs.size()
+            assert T <= self.ctx_len, "Cannot forward, model ctx_len is exhausted."
+            x = embs
 
         # Handle dropout (input)
         if self.dropout > 0.0:

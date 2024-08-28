@@ -71,6 +71,10 @@ class RWKV_v5(torch.nn.Module):
     def __init__(self, **args):
         super().__init__()
         self.model = RWKV(**args)
+        self.config = Munch(
+            n_embd=self.model.n_embd,
+            hidden_size=self.model.n_embd
+        )
 
     @staticmethod
     def from_pretrained(*_args, **kwargs):
@@ -81,15 +85,19 @@ class RWKV_v5(torch.nn.Module):
         model = RWKV_v5(**args)
         return model
 
-    def forward(self, input_ids, state=None, attention_mask=None):
+    def forward(self, input_ids=None, inputs_embeds=None, state=None, attention_mask=None, *args, **kwargs):
         if state is None:
             state = (None, None)
-        out, new_shift, new_wkv = self.model(idx=input_ids, last_shift_states=state[0], last_wkv_states=state[1])
-        return out, (new_shift, new_wkv)
+        out, new_shift, new_wkv = self.model(idx=input_ids, embs=inputs_embeds, last_shift_states=state[0], last_wkv_states=state[1])
+        return  Munch(
+                    logits=out,
+                    state=(new_shift, new_wkv)
+                )
     
     def generate(self, input_ids, attention_mask, pad_token_id, max_new_tokens, state, max_length):
         generation_outputs = [[]]
-        out, state = self.forward(input_ids=input_ids, state=state)
+        output = self.forward(input_ids=input_ids, state=state)
+        out, state = output['logits'], output['state']
         device = next(self.model.parameters()).device
         assert input_ids.size(0) == 1
         for i in range(max_new_tokens):
@@ -100,6 +108,8 @@ class RWKV_v5(torch.nn.Module):
                 state=state)
         return generation_outputs
 
+    def get_input_embeddings(self):
+        return self.model.emb
         
 class MemoryCell(torch.nn.Module):
     def __init__(self, base_model):
@@ -108,7 +118,8 @@ class MemoryCell(torch.nn.Module):
 
     def forward(self, input_ids, memory_state=None, labels=None, labels_mask=None, **kwargs):
         seg_kwargs = self.process_input(input_ids, memory_state, **kwargs)
-        out, state = self.model(**seg_kwargs)
+        output = self.model(**seg_kwargs)
+        out, state = output['logits'], output['state']
         out = self.process_output(out, labels, labels_mask, **kwargs)
 
         return out, state
@@ -167,6 +178,7 @@ class RecurrentWrapper(torch.nn.Module):
                 sliding_window=None
                 ):
         memory_state = None
+
         segmented = self.segment(input_ids=input_ids, inputs_embeds=inputs_embeds, attention_mask=attention_mask, labels=labels, labels_mask=labels_mask)
         cell_outputs = []
         for seg_num, segment in enumerate(segmented):

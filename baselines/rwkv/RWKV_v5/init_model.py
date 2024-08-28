@@ -111,7 +111,7 @@ def main():
 
     # (todo) implement in the future, to support model resizing
     # parser.add_argument('--existing_model_path', type=str, help='Existing model path', default=None)
-    parser.add_argument('output_model_path', type=str, help='Output model file path')
+    parser.add_argument('--output_model_path', type=str, help='Output model file path')
 
     # Parse the args
     args = parser.parse_args()
