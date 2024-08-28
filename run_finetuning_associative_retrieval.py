@@ -97,6 +97,8 @@ parser.add_argument('--d_mem', type=int, default=None, help='number of rows in a
 parser.add_argument('--layers_attr', type=str, default=None, help='attribute of model, which contains layers')
 parser.add_argument('--rewrite_setting', action='store_true', default=False,
                     help='keys can occur several times')
+parser.add_argument('--no_denom', action='store_true', default=False,
+                    help='use no denominator in ARMT')
 parser.add_argument('--no_correction', action='store_true', default=False,
                     help='ARMT shmidhuber correction for rewriting')
 parser.add_argument('--desired_metric', type=float, default=1.0, help='metric to stop training')
@@ -413,6 +415,8 @@ if __name__ == '__main__':
             mem_cell_args['wrap_pos'] = args.wrap_pos
         if args.layers_attr is not None:
             mem_cell_args['layers_attr'] = args.layers_attr
+        if args.no_denom is not None:
+            mem_cell_args['use_denom'] = not args.no_denom
 
         if args.no_correction:
             mem_cell_args['correction'] = False
