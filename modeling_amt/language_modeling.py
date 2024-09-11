@@ -26,7 +26,7 @@ class DPFP:
 
 class AssociativeLayerWrapper(torch.nn.Module):
 
-    def __init__(self, layer, d_model,  num_mem_tokens, d_mem, n_heads=4, correction=True, info=None, use_denom=True) -> None:
+    def __init__(self, layer, d_model,  num_mem_tokens, d_mem, n_heads=1, correction=True, info=None, use_denom=True, gating=False) -> None:
         super().__init__()
         self.info = info
         self.seg_num = 0
@@ -34,7 +34,7 @@ class AssociativeLayerWrapper(torch.nn.Module):
         self.num_mem_tokens = num_mem_tokens
         self.d_mem = d_mem
         self.n_heads = n_heads
-
+        self.gating = gating
         nu = 3
         self.d_key = 2 * nu * d_mem
 
@@ -50,7 +50,10 @@ class AssociativeLayerWrapper(torch.nn.Module):
         # torch.nn.init.zeros_(self.W_mq.weight)
         self.W_mk = torch.nn.Linear(d_model, d_mem, bias=False)
         self.W_mv = torch.nn.Linear(d_model, d_model, bias=False)
-        self.W_mb = torch.nn.Linear(d_model, n_heads)
+        if gating:
+            self.W_mb = torch.nn.Linear(d_model, d_model)
+        else:
+            self.W_mb = torch.nn.Linear(d_model, n_heads)
         torch.nn.init.zeros_(self.W_mv.weight)
 
         self.W_mem = torch.zeros(1, n_heads ,self.d_key // n_heads, d_model // n_heads)
@@ -110,7 +113,8 @@ class AssociativeLayerWrapper(torch.nn.Module):
             ) + hidden_states
         out = self.layer(hidden_states, *args, **kwargs)
         if not self.generate_mode:
-            mem_tokens = out[0][:, -self.num_mem_tokens:]
+            # mem_tokens = out[0][:, -self.num_mem_tokens:]
+            mem_tokens = out[0]
             self.update_mem(mem_tokens)
             self.first_seg = False
         return out
@@ -149,9 +153,10 @@ class AssociativeLayerWrapper(torch.nn.Module):
         # new_info_coef = torch.clip(1 - old_norm / (new_norm + 1e-5), -10, 10)[..., None].detach()
         # new_info_coef = 1 - denom
 
-        mb = torch.sigmoid(self.W_mb(mem_tokens)).permute(0, 2, 1)
+        mb = self._to_heads(torch.sigmoid(self.W_mb(mem_tokens)))
 
-        associations =  torch.einsum('ihjk,ihjt,ihj->ihkt', mk, mv, mb) # (bsz, n_heads, d_mem, d_model)
+        einop = f"ihjk,ihjt,ihj{'t' if self.gating else ''}->ihkt"
+        associations =  torch.einsum(einop, mk, mv, mb) # (bsz, n_heads, d_mem, d_model)
 
         self.W_mem = self.W_mem + associations
 
@@ -171,7 +176,7 @@ class AssociativeLayerWrapper(torch.nn.Module):
 
 
 class AssociativeMemoryCell(torch.nn.Module):
-    def __init__(self, base_model, num_mem_tokens, d_mem, layers_attr: str = 'transformer.h', wrap_pos=False, correction=True, n_heads=1, use_denom=True):
+    def __init__(self, base_model, num_mem_tokens, d_mem, layers_attr: str = 'transformer.h', wrap_pos=False, correction=True, n_heads=1, use_denom=True, gating=False):
         super().__init__()
         self.model = base_model
         self.num_mem_tokens = num_mem_tokens
@@ -193,7 +198,8 @@ class AssociativeMemoryCell(torch.nn.Module):
                 correction=correction,
                 info={'layer': i},
                 n_heads=n_heads,
-                use_denom=use_denom
+                use_denom=use_denom,
+                gating=gating
             )
         self.create_memory(num_mem_tokens)
         self.wrap_pos = wrap_pos
@@ -366,7 +372,8 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
                 output_hidden_states=None,
                 input_segmented=False,
                 ):
-        sliding_window = getattr(self.rmt_config, 'sliding_window', False)
+        
+        sliding_window = self.rmt_config['sliding_window'] if 'sliding_window' in self.rmt_config else False
         if input_segmented:
             n_segs = input_ids.shape[1] if not (input_ids is None) else inputs_embeds.shape[1]
             segmented = [dict(
@@ -401,12 +408,12 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             if 'state' in cell_out:
                 state = cell_out['state']
             if sliding_window:
-                prev_attn_mask = segment['attention_mask'] * torch.tril(torch.ones_like(segment['attention_mask']))
+                prev_attn_mask = segment['attention_mask'] * torch.triu(torch.ones_like(segment['attention_mask']))
                 past_key_values = [
                     [
                         k_or_v[..., -(num_mem_tokens+seg_len):k_or_v.size(-2)-num_mem_tokens, :].detach() 
                         for k_or_v in seg_kv
-                    ] 
+                    ]
                     for seg_kv in cell_out['past_key_values']
                 ]
             cell_outputs.append(cell_out)

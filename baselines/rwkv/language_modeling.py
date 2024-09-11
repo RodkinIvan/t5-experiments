@@ -1,10 +1,23 @@
+import sys
+import os
+sys.path.insert(0, 'baselines/rwkv/RWKV_PEFT')
+os.environ["RWKV_TRAIN_TYPE"] = 'infctx'
+os.environ["WKV"] = 'fla'
+os.environ['RWKV_MY_TESTING'] = 'x060'
+# os.environ["RWKV_FLOAT_MODE"] = "bf16"
+
 import math
 import torch
 from torch.nn import CrossEntropyLoss
 from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
+
 from baselines.rwkv.RWKV_v5.src.model import RWKV
+# from baselines.rwkv.RWKV_PEFT.src.model import RWKV
+
 from transformers import RwkvForCausalLM
 from munch import Munch
+from rwkv.model import RWKV as RWKV_for_args
+
 
 class RWKV_v5_hf(torch.nn.Module):
     def __init__(self, *args, **kwargs):
@@ -45,6 +58,7 @@ class RWKV_v5_tiny(torch.nn.Module):
             grad_cp=False
         )
         model = RWKV_v5_tiny(**args)
+        
         return model
 
     def forward(self, input_ids, state=None, attention_mask=None):
@@ -68,9 +82,13 @@ class RWKV_v5_tiny(torch.nn.Module):
         return generation_outputs
 
 class RWKV_v5(torch.nn.Module):
-    def __init__(self, **args):
+    def __init__(self, *args, **kwargs):
         super().__init__()
-        self.model = RWKV(**args)
+        self.model = RWKV(*args, **kwargs)
+        # self.config = Munch(
+        #     n_embd=self.model.args.n_embd,
+        #     hidden_size=self.model.args.n_embd
+        # )
         self.config = Munch(
             n_embd=self.model.n_embd,
             hidden_size=self.model.n_embd
@@ -83,6 +101,24 @@ class RWKV_v5(torch.nn.Module):
             grad_cp=False
         )
         model = RWKV_v5(**args)
+
+        # path = '/home/rodkin/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth'
+        # args = RWKV_for_args(model=path, strategy='cuda fp16').args
+        # del args.strategy_string
+        # args.dim_ffn = args.n_ffn
+        # args.vocab_size = 50277
+        # args.my_pos_emb = 0
+        # args.pre_ffn = 0
+        # args.head_size_a = 64
+        # args.head_qk = 0
+        # args.head_size_divisor = 8
+        # args.dropout = 0
+        # args.my_testing = 'x060'
+        # args.chunk_ctx = 1e6
+        # args.grad_cp = True
+        # model = RWKV_v5(args)
+        # model.model.load_state_dict(torch.load(path, map_location='cpu'))
+
         return model
 
     def forward(self, input_ids=None, inputs_embeds=None, state=None, attention_mask=None, *args, **kwargs):
@@ -138,6 +174,7 @@ class MemoryCell(torch.nn.Module):
         
         seg_kwargs['input_ids'] = input_ids
         seg_kwargs['state'] = memory_state
+        del seg_kwargs['attention_mask']
 
         return seg_kwargs
     
@@ -165,7 +202,6 @@ class RecurrentWrapper(torch.nn.Module):
         super().__init__()
         self.memory_cell = memory_cell
         self.rmt_config = rmt_kwargs
-
     def forward(self, 
                 input_ids, 
                 labels=None, 
