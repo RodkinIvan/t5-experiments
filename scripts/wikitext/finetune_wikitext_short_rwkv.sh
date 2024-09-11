@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=1,2,3,4
-
+# export CUDA_VISIBLE_DEVICES=1,2,3,4
+export CUDA_VISIBLE_DEVICES=0,1
+# export TORCH_NCCL_USE_COMM_NONBLOCKING=1000000000
+export RWKV_NO_CUDA=1
 export RWKV_JIT_ON=0
-NP=4 # ./test_bert_sparse_pretrain_train_valid.sh
+
+# NP=4 # ./test_bert_sparse_pretrain_train_valid.sh
+NP=2
 set -e
 cd ../..
 
@@ -15,15 +19,18 @@ RECURRENT_WRAPPER=baselines.rwkv.language_modeling:RecurrentWrapper
 BACKBONE_CLS=baselines.rwkv.language_modeling:RWKV_v5
 TASK_NAME=wikitext-103-v1
 
-ITERS=36000
-TBS=32
+ITERS=5000
+TBS=64
 
-MAX_N_SEGMENTSS=(2)
-MAX_VAL_SEGMENTSS=(2)
+MAX_N_SEGMENTSS=(8)
+MAX_VAL_SEGMENTSS=(16)
 INPUT_TOKENS=128
+# MAX_N_SEGMENTSS=(1)
+# MAX_VAL_SEGMENTSS=(1)
+# INPUT_TOKENS=1024
 LRS=(1e-4)
 MODEL=trash
-BSS=(1)
+BSS=(2)
 
 
 
@@ -88,15 +95,14 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --optimizer AdamW  --weight_decay 0.01 \
         --lr ${LR} --lr_scheduler $SCHEDULER --num_warmup_steps 1000 \
         --data_n_workers 2 \
-        --log_interval 100 --valid_interval 500 \
+        --log_interval 50 --valid_interval 250 \
         --show_valid_examples 5 \
         --early_stopping_patience 15 \
         --seed $(($N+42*$j)) \
-        --clip_grad_value 5.0 \
+        --clip_grad_value 1.0 \
         --save_best \
-        --tokenizer 'RWKV/HF_v5-Eagle-7B' \
-        --tokenized_dataset 'irodkin/wikitext-103-raw-v1-rwkv-v5-tokenized'
-        
+        --tokenizer EleutherAI/pythia-160m \
+        --tokenized_dataset irodkin/wikitext-103-raw-v1-rwkv-v5-tokenized
 done
 done
 done
