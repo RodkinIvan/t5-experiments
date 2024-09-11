@@ -153,7 +153,7 @@ class RecurrentWrapper(torch.nn.Module):
                 output_hidden_states=None,
                 input_segmented=False,
                 ):
-        sliding_window = getattr(self.rmt_config, 'sliding_window', False)
+        sliding_window = self.rmt_config['sliding_window'] if 'sliding_window' in self.rmt_config else False
         memory_state = None
         if input_segmented:
             n_segs = input_ids.shape[1] if not (input_ids is None) else inputs_embeds.shape[1]
@@ -185,7 +185,7 @@ class RecurrentWrapper(torch.nn.Module):
                                                     )
             
             if sliding_window:
-                prev_attn_mask = segment['attention_mask']
+                prev_attn_mask = segment['attention_mask'] * torch.triu(torch.ones_like(segment['attention_mask']))
                 past_key_values = [
                     [
                         k_or_v[..., -(num_mem_tokens+seg_len):k_or_v.size(-2)-num_mem_tokens, :].detach() 
