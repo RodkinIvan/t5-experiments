@@ -5,37 +5,36 @@ os.environ["RWKV_TRAIN_TYPE"] = 'infctx'
 os.environ["WKV"] = 'fla'
 os.environ['RWKV_MY_TESTING'] = 'x060'
 # os.environ["RWKV_FLOAT_MODE"] = "bf16"
-
 import math
 import torch
 from torch.nn import CrossEntropyLoss
 from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 
-from baselines.rwkv.RWKV_v5.src.model import RWKV
+from baselines.rwkv.RWKV_v5.src.model import RWKV as RWKV5
+from baselines.rwkv.RWKV_v6.src.model import RWKV as RWKV6
 # from baselines.rwkv.RWKV_PEFT.src.model import RWKV
 
 from transformers import RwkvForCausalLM
 from munch import Munch
-from rwkv.model import RWKV as RWKV_for_args
+# from rwkv.model import RWKV as RWKV_for_args
 
-
-class RWKV_v5_hf(torch.nn.Module):
+class RWKVModel(torch.nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__()
-        self.model = RwkvForCausalLM.from_pretrained(*args, **kwargs)
 
-    @staticmethod
-    def from_pretrained(*_args, **kwargs):
-        model = RWKV_v5_hf(*_args, **kwargs)
-        return model
-
-    def forward(self, input_ids, state=None, attention_mask=None):
-        out = self.model(input_ids, state=state)
-        return out.logits, out.state
+    def forward(self, input_ids=None, inputs_embeds=None, state=None, attention_mask=None, *args, **kwargs):
+        if state is None:
+            state = (None, None)
+        out, new_shift, new_wkv = self.model(idx=input_ids, embs=inputs_embeds, last_shift_states=state[0], last_wkv_states=state[1])
+        return  Munch(
+                    logits=out,
+                    state=(new_shift, new_wkv)
+                )
     
     def generate(self, input_ids, attention_mask, pad_token_id, max_new_tokens, state, max_length):
         generation_outputs = [[]]
-        out, state = self.forward(input_ids=input_ids, state=state)
+        output = self.forward(input_ids=input_ids, state=state)
+        out, state = output['logits'], output['state']
         device = next(self.model.parameters()).device
         assert input_ids.size(0) == 1
         for i in range(max_new_tokens):
@@ -46,10 +45,41 @@ class RWKV_v5_hf(torch.nn.Module):
                 state=state)
         return generation_outputs
 
+    def get_input_embeddings(self):
+        return self.model.emb
+        
+
+# class RWKV_v5_hf(torch.nn.Module):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__()
+#         self.model = RwkvForCausalLM.from_pretrained(*args, **kwargs)
+
+#     @staticmethod
+#     def from_pretrained(*_args, **kwargs):
+#         model = RWKV_v5_hf(*_args, **kwargs)
+#         return model
+
+#     def forward(self, input_ids, state=None, attention_mask=None):
+#         out = self.model(input_ids, state=state)
+#         return out.logits, out.state
+    
+#     def generate(self, input_ids, attention_mask, pad_token_id, max_new_tokens, state, max_length):
+#         generation_outputs = [[]]
+#         out, state = self.forward(input_ids=input_ids, state=state)
+#         device = next(self.model.parameters()).device
+#         assert input_ids.size(0) == 1
+#         for i in range(max_new_tokens):
+#             token = out[0, -1].argmax(-1)
+#             generation_outputs[0].append(token)
+#             out, state = self.forward(
+#                 input_ids=torch.tensor([[token.item()]],dtype=torch.long, device=device), 
+#                 state=state)
+#         return generation_outputs
+
 class RWKV_v5_tiny(torch.nn.Module):
     def __init__(self, **args):
         super().__init__()
-        self.model = RWKV(**args)
+        self.model = RWKV5(**args)
 
     @staticmethod
     def from_pretrained(*_args, **kwargs):
@@ -80,11 +110,10 @@ class RWKV_v5_tiny(torch.nn.Module):
                 input_ids=torch.tensor(token[..., None],dtype=torch.long, device=device), 
                 state=state)
         return generation_outputs
-
-class RWKV_v5(torch.nn.Module):
+class RWKV_v6(RWKVModel):
     def __init__(self, *args, **kwargs):
         super().__init__()
-        self.model = RWKV(*args, **kwargs)
+        self.model = RWKV6(*args, **kwargs)
         # self.config = Munch(
         #     n_embd=self.model.args.n_embd,
         #     hidden_size=self.model.args.n_embd
@@ -93,19 +122,20 @@ class RWKV_v5(torch.nn.Module):
             n_embd=self.model.n_embd,
             hidden_size=self.model.n_embd
         )
-
     @staticmethod
     def from_pretrained(*_args, **kwargs):
+
         args = dict(
-            load_model='/home/rodkin/lab/RWKV-5-World-0.4B-v2-20231113-ctx4096.pth',
+            # load_model='/home/ivan.rodkin/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth',
+            load_model='/home/ivan.rodkin/lab/rwkv6-173m-wikitext-103.pth',
             grad_cp=False
         )
-        model = RWKV_v5(**args)
+        model = RWKV_v6(**args)
 
-        # path = '/home/rodkin/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth'
+        # path = '/home/ivan.rodkin/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth'
         # args = RWKV_for_args(model=path, strategy='cuda fp16').args
         # del args.strategy_string
-        # args.dim_ffn = args.n_ffn
+        # args = Munch()
         # args.vocab_size = 50277
         # args.my_pos_emb = 0
         # args.pre_ffn = 0
@@ -114,39 +144,60 @@ class RWKV_v5(torch.nn.Module):
         # args.head_size_divisor = 8
         # args.dropout = 0
         # args.my_testing = 'x060'
-        # args.chunk_ctx = 1e6
+        # args.chunk_ctx = 128
         # args.grad_cp = True
+        # args.n_layer=12
+        # args.n_embd = 768
+        # args.dim_att = 768
+        # args.dim_ffn = 2688
+        # args.n_head = 12
         # model = RWKV_v5(args)
         # model.model.load_state_dict(torch.load(path, map_location='cpu'))
-
         return model
 
-    def forward(self, input_ids=None, inputs_embeds=None, state=None, attention_mask=None, *args, **kwargs):
-        if state is None:
-            state = (None, None)
-        out, new_shift, new_wkv = self.model(idx=input_ids, embs=inputs_embeds, last_shift_states=state[0], last_wkv_states=state[1])
-        return  Munch(
-                    logits=out,
-                    state=(new_shift, new_wkv)
-                )
-    
-    def generate(self, input_ids, attention_mask, pad_token_id, max_new_tokens, state, max_length):
-        generation_outputs = [[]]
-        output = self.forward(input_ids=input_ids, state=state)
-        out, state = output['logits'], output['state']
-        device = next(self.model.parameters()).device
-        assert input_ids.size(0) == 1
-        for i in range(max_new_tokens):
-            token = out[0, -1].argmax(-1)
-            generation_outputs[0].append(token)
-            out, state = self.forward(
-                input_ids=torch.tensor([[token.item()]],dtype=torch.long, device=device), 
-                state=state)
-        return generation_outputs
+class RWKV_v5(RWKVModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.model = RWKV5(*args, **kwargs)
+        # self.config = Munch(
+        #     n_embd=self.model.args.n_embd,
+        #     hidden_size=self.model.args.n_embd
+        # )
+        self.config = Munch(
+            n_embd=self.model.n_embd,
+            hidden_size=self.model.n_embd
+        )
+    @staticmethod
+    def from_pretrained(*_args, **kwargs):
+        args = dict(
+            load_model='/home/ivan.rodkin/lab/RWKV-5-World-0.4B-v2-20231113-ctx4096.pth',
+            grad_cp=False
+        )
+        model = RWKV_v5(**args)
 
-    def get_input_embeddings(self):
-        return self.model.emb
-        
+        # path = '/home/ivan.rodkin/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth'
+        # args = RWKV_for_args(model=path, strategy='cuda fp16').args
+        # del args.strategy_string
+        # args = Munch()
+        # args.vocab_size = 50277
+        # args.my_pos_emb = 0
+        # args.pre_ffn = 0
+        # args.head_size_a = 64
+        # args.head_qk = 0
+        # args.head_size_divisor = 8
+        # args.dropout = 0
+        # args.my_testing = 'x060'
+        # args.chunk_ctx = 128
+        # args.grad_cp = True
+        # args.n_layer=12
+        # args.n_embd = 768
+        # args.dim_att = 768
+        # args.dim_ffn = 2688
+        # args.n_head = 12
+        # model = RWKV_v5(args)
+        # model.model.load_state_dict(torch.load(path, map_location='cpu'))
+        return model
+
 class MemoryCell(torch.nn.Module):
     def __init__(self, base_model):
         super().__init__()
