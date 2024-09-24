@@ -1,36 +1,34 @@
 #!/usr/bin/env bash
-# export CUDA_VISIBLE_DEVICES=1,2,3,4
 export CUDA_VISIBLE_DEVICES=0,1
-# export TORCH_NCCL_USE_COMM_NONBLOCKING=1000000000
 export RWKV_NO_CUDA=1
 export RWKV_JIT_ON=0
-
-# NP=4 # ./test_bert_sparse_pretrain_train_valid.sh
+export CUDA_LAUNCH_BLOCKING=1
+export CUBLAS_WORKSPACE_CONFIG=:4096:2
+export TORCH_USE_CUDA_DSA=1
+export WANDB_PROJECT=t5-experiments
 NP=2
 set -e
 cd ../..
 
-CUBLAS_WORKSPACE_CONFIG=:4096:2
-CUDA_LAUNCH_BLOCKING=1
-
 MODEL_TYPE=decoder
 MEMORY_CELL=baselines.rwkv.language_modeling:MemoryCell
 RECURRENT_WRAPPER=baselines.rwkv.language_modeling:RecurrentWrapper
-BACKBONE_CLS=baselines.rwkv.language_modeling:RWKV_v5
+BACKBONE_CLS=baselines.rwkv.language_modeling:RWKV_v6
 TASK_NAME=wikitext-103-v1
 
-ITERS=5000
+ITERS=10000
 TBS=64
 
-MAX_N_SEGMENTSS=(8)
-MAX_VAL_SEGMENTSS=(16)
-INPUT_TOKENS=128
+MAX_N_SEGMENTSS=(1)
+MAX_VAL_SEGMENTSS=(2)
+INPUT_TOKENS=1024
 # MAX_N_SEGMENTSS=(1)
 # MAX_VAL_SEGMENTSS=(1)
 # INPUT_TOKENS=1024
 LRS=(1e-4)
 MODEL=trash
-BSS=(2)
+TOKENIZER=EleutherAI/pythia-160m
+BSS=(8)
 
 
 
@@ -101,8 +99,8 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --seed $(($N+42*$j)) \
         --clip_grad_value 1.0 \
         --save_best \
-        --tokenizer EleutherAI/pythia-160m \
-        --tokenized_dataset irodkin/wikitext-103-raw-v1-rwkv-v5-tokenized
+        --tokenizer $TOKENIZER
+        # --tokenized_dataset irodkin/wikitext-103-raw-v1-rwkv-v5-tokenized
 done
 done
 done

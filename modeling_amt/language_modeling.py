@@ -5,7 +5,8 @@ from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 from torch.nn.functional import relu as r
 import torch.nn.functional as F
 import wandb
-
+from munch import Munch
+import os
 def dpfp(x, nu=1):
   x = torch.cat([r(x), r(-x)], dim=-1)
   x_rolled = torch.cat([x.roll(shifts=j, dims=-1)
@@ -110,7 +111,7 @@ class AssociativeLayerWrapper(torch.nn.Module):
                 # self.ln(
                     hidden_states
                 # )
-            ) + hidden_states
+            )+ hidden_states
         out = self.layer(hidden_states, *args, **kwargs)
         if not self.generate_mode:
             # mem_tokens = out[0][:, -self.num_mem_tokens:]
@@ -155,7 +156,7 @@ class AssociativeLayerWrapper(torch.nn.Module):
 
         mb = self._to_heads(torch.sigmoid(self.W_mb(mem_tokens)))
 
-        einop = f"ihjk,ihjt,ihj{'t' if self.gating else ''}->ihkt"
+        einop = f"ihjk,ihjt,ihj{'t' if self.gating else 'x'}->ihkt"
         associations =  torch.einsum(einop, mk, mv, mb) # (bsz, n_heads, d_mem, d_model)
 
         self.W_mem = self.W_mem + associations
@@ -245,8 +246,7 @@ class AssociativeMemoryCell(torch.nn.Module):
 
 
         seg_kwargs = self.process_input(input_ids, **kwargs)
-        if 'state' in seg_kwargs and not self.layers[0].generate_mode:
-        # if 'state' in seg_kwargs:
+        if os.environ.get('RWKV_ARMT') == '1' and not self.layers[0].generate_mode:
             input1 = dict()
             input2 = dict()
             for item in seg_kwargs:
@@ -262,11 +262,11 @@ class AssociativeMemoryCell(torch.nn.Module):
             out = self.model(**input1)
             self.generate_mode(False)
             state_tmp = [torch.clone(state) for state in out['state']]
+            out = Munch({k: torch.clone(t) if isinstance(t, torch.Tensor) else t for k, t in out.items()})
             state_tmp = tuple(state_tmp)
             input2['state'] = out['state']
             _ = self.model(**input2)
             out['state'] = state_tmp
-
         else:
             out = self.model(**seg_kwargs)
 
@@ -311,7 +311,7 @@ class AssociativeMemoryCell(torch.nn.Module):
             return mask
     
     def process_output(self, model_outputs, labels, labels_mask, **kwargs):
-        if (self.num_mem_tokens not in {0, None}) and ('state' not in model_outputs):
+        if (self.num_mem_tokens not in {0, None}) and os.environ.get('RWKV_ARMT') != '1':
             out = CausalLMOutputWithCrossAttentions()
             out['logits'] = model_outputs.logits[:, :-self.num_mem_tokens]
             if kwargs.get('output_hidden_states'):

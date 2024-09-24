@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=0,1,2,3
+export CUDA_VISIBLE_DEVICES=1
+export RWKV_NO_CUDA=1
 export RWKV_JIT_ON=0
-NP=4 # ./test_bert_sparse_pretrain_train_valid.sh
+export WANDB_PROJECT=t5-experiments
+export RWKV_ARMT=1
+NP=1
 set -e
 cd ../..
 
@@ -11,23 +14,31 @@ CUDA_LAUNCH_BLOCKING=1
 MODEL_TYPE=decoder
 MEMORY_CELL=modeling_amt.language_modeling:AssociativeMemoryCell
 RECURRENT_WRAPPER=modeling_amt.language_modeling:AssociativeRecurrentWrapper
-BACKBONE_CLS=baselines.rwkv.language_modeling:RWKV_v5
+BACKBONE_CLS=baselines.rwkv.language_modeling:RWKV_v6
 TASK_NAME=wikitext-103-v1
 
-ITERS=1
-TBS=32
+ITERS=10000
+TBS=64
 
-MAX_N_SEGMENTSS=(2 3 5 8)
-MAX_VAL_SEGMENTSS=(2 3 5 15)
-LRS=(1e-4 1e-4 1e-4 1e-4)
-BSS=(4 2 2 1)
+# MAX_N_SEGMENTSS=(2 3 5 8)
+# MAX_VAL_SEGMENTSS=(2 3 5 16)
+# LRS=(1e-4 1e-4 1e-4 1e-4)
+# BSS=(16 8 4 4)
+
+
+MAX_N_SEGMENTSS=(8)
+MAX_VAL_SEGMENTSS=(16)
+LRS=(1e-4)
+BSS=(4)
 
 MODEL=trash
-MEMORY_SIZE=16
+TOKENIZER=EleutherAI/pythia-160m
+MEMORY_SIZE=4
 INPUT_TOKENS=128
 D_MEM=4
 N_HEADS=1
 
+export CHUNK_LEN=$MEMORY_SIZE
 
 
 for N in 4
@@ -63,7 +74,7 @@ do
 if [[ j -gt 0 ]]
 then
     PREV_SEQ_LEN=$(((INPUT_SIZE-2*MEMORY_SIZE)*${MAX_N_SEGMENTSS[j-1]}))
-    MODEL_CPT=../runs/lm_long/amt/${TASK_NAME}/$MODEL_NAME/lr${LRS[j-1]}_${SCHEDULER}_alpha${ALPHAS[j-1]}_dmem${D_MEM}_${PREV_SEQ_LEN}-${MAX_N_SEGMENTSS[j-1]}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N 
+    MODEL_CPT=../runs/lm_long/rwkv_armt/${TASK_NAME}/$MODEL_NAME/lr${LRS[j-1]}_${SCHEDULER}_alpha${ALPHAS[j-1]}_dmem${D_MEM}_${PREV_SEQ_LEN}-${MAX_N_SEGMENTSS[j-1]}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N 
 else
     MODEL_CPT=None
 fi
@@ -99,12 +110,13 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --show_valid_examples 5 \
         --early_stopping_patience 15 \
         --seed $(($N+42*$j)) \
-        --clip_grad_value 5.0 \
+        --clip_grad_value 0.1 \
         --save_best \
-        --tokenizer 'openai-community/gpt2' \
+        --tokenizer $TOKENIZER \
         --d_mem $D_MEM \
         --n_heads $N_HEADS \
-        --layers_attr model.blocks
+        --layers_attr model.blocks \
+        --no_denom
 done
 done
 done
