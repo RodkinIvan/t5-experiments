@@ -72,6 +72,8 @@ class AssociativeLayerWrapper(torch.nn.Module):
         self.generate_mode = False
         self.first_seg = True
         self.correction = correction
+
+        # self.freeze_mem()
         
     def _to_heads(self, x):
         bsz, seq_len, d_model = x.shape
@@ -166,6 +168,13 @@ class AssociativeLayerWrapper(torch.nn.Module):
         # self.z = self.z + (new_info_coef*mb[..., None]*mk).sum(dim=1)
         self.seg_num += 1
 
+    def freeze_mem(self):
+        self.W_mb.weight.requires_grad = False
+        self.W_mb.bias.requires_grad = False
+
+        self.W_mq.weight.requires_grad = False
+        self.W_mk.weight.requires_grad = False
+        self.W_mv.weight.requires_grad = False
 
     def zero_mem(self):
         self.first_seg = True
