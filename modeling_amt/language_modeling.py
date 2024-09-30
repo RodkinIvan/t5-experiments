@@ -116,8 +116,8 @@ class AssociativeLayerWrapper(torch.nn.Module):
             )+ hidden_states
         out = self.layer(hidden_states, *args, **kwargs)
         if not self.generate_mode:
-            # mem_tokens = out[0][:, -self.num_mem_tokens:]
-            mem_tokens = out[0]
+            mem_tokens = out[0][:, -self.num_mem_tokens:]
+            # mem_tokens = out[0]
             self.update_mem(mem_tokens)
             self.first_seg = False
         return out
@@ -256,26 +256,28 @@ class AssociativeMemoryCell(torch.nn.Module):
 
         seg_kwargs = self.process_input(input_ids, **kwargs)
         if os.environ.get('RWKV_ARMT') == '1' and not self.layers[0].generate_mode:
-            input1 = dict()
-            input2 = dict()
-            for item in seg_kwargs:
-                if isinstance(seg_kwargs[item], torch.Tensor):
-                # if False:
-                    input1[item] = seg_kwargs[item][:, :-self.num_mem_tokens]
-                    input2[item] = seg_kwargs[item][:, -self.num_mem_tokens:]
-                else:
-                    input1[item] = seg_kwargs[item]
-                    input2[item] = seg_kwargs[item]
+            # input1 = dict()
+            # input2 = dict()
+            # for item in seg_kwargs:
+            #     if isinstance(seg_kwargs[item], torch.Tensor):
+            #     # if False:
+            #         input1[item] = seg_kwargs[item][:, :-self.num_mem_tokens]
+            #         input2[item] = seg_kwargs[item][:, -self.num_mem_tokens:]
+            #     else:
+            #         input1[item] = seg_kwargs[item]
+            #         input2[item] = seg_kwargs[item]
             
-            self.generate_mode(True)
-            out = self.model(**input1)
-            self.generate_mode(False)
-            state_tmp = [torch.clone(state) for state in out['state']]
-            out = Munch({k: torch.clone(t) if isinstance(t, torch.Tensor) else t for k, t in out.items()})
-            state_tmp = tuple(state_tmp)
-            input2['state'] = out['state']
-            _ = self.model(**input2)
-            out['state'] = state_tmp
+            # self.generate_mode(True)
+            # out = self.model(**input1)
+            # self.generate_mode(False)
+            # state_tmp = tuple([torch.clone(state) for state in out['state']])
+            # out = Munch({k: torch.clone(t) if isinstance(t, torch.Tensor) else t for k, t in out.items()})
+            # input2['state'] = out['state']
+            # _ = self.model(**input2)
+            # out['state'] = state_tmp
+            # out['state'] = out2['state']
+            out = self.model(**seg_kwargs)
+            out['logits'] = out['logits'][:, :-self.num_mem_tokens]
         else:
             out = self.model(**seg_kwargs)
 
