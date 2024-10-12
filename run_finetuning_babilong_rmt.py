@@ -292,7 +292,7 @@ if __name__ == '__main__':
                                       num_replicas=accelerator.num_processes, drop_last=False, shuffle=False)
     train_dataloader = DataLoader(batch_size=per_worker_batch_size, dataset=train_dataset, sampler=train_sampler,
                                   **kwargs)
-    test_dataloader = DataLoader(batch_size=1, dataset=test_dataset, sampler=test_sampler, **kwargs_valid)
+    test_dataloader = DataLoader(batch_size=1 if args.use_generate_on_valid else per_worker_batch_size, dataset=test_dataset, sampler=test_sampler, **kwargs_valid)
 
     if args.valid_interval is None:
         args.valid_interval = args.log_interval
@@ -390,7 +390,7 @@ if __name__ == '__main__':
 
         ## load cpt of rmt
         if args.model_cpt and args.model_cpt != 'None':
-            if 'mamba' not in args.model_cpt and 'rwkv' not in args.model_cpt:
+            if ('mamba' not in args.model_cpt) and ('rwkv' not in args.model_cpt):
                 model_cpt = os.path.join(args.model_cpt, "model_best/pytorch_model.bin")
                 cpt = torch.load(model_cpt, map_location='cpu')
                 model.load_state_dict(cpt)
@@ -435,8 +435,7 @@ if __name__ == '__main__':
     def keep_for_metrics_fn(batch, output):
         # select data from batch and model output that would be used to compute metrics
         data = {}
-        if not args.validate_only:
-            data['labels'] = batch['labels']
+        data['labels'] = batch['labels']
         if 'loss' in output:
             data['loss'] = output['loss']
         data['target_text'] = batch['target_text']

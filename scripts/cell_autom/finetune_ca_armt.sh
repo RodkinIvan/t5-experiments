@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=0,1
-NP=2 # ./test_bert_sparse_pretrain_train_valid.sh
+export CUDA_VISIBLE_DEVICES=1
+NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
 cd ../..
@@ -11,18 +11,23 @@ TASK_NAME=CA
 MODEL_TYPE=decoder
 MEMORY_CELL=modeling_amt.language_modeling:AssociativeMemoryCell
 RECURRENT_WRAPPER=modeling_amt.language_modeling:AssociativeRecurrentWrapper
-BACKBONE_CLS=base_models.modeling_gpt_neox:GPTNeoXForCausalLM
+BACKBONE_CLS=transformers:GPTNeoXForCausalLM
 
 DATASET_PATH=irodkin/1dCA_r2s20T20
 
 ITERS=30000
-TBS=512
+TBS=256
 
 MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
-SHIFTS=(4)
+SHIFTS=(2)
 LRS=(3e-4)
-BSS=(128)
+BSS=(256)
+
+MEMORY_SIZE=16
+INPUT_TOKENS=20
+D_MEM=32
+N_HEADS=1
 
 DIM=128
 NUM_LAYERS=4
@@ -32,13 +37,9 @@ python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --num
 cd ../..
 MODEL_CFG=/home/ivan.rodkin/lab/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
 
-MEMORY_SIZE=16
-INPUT_TOKENS=20
-D_MEM=32
-N_HEADS=1
 
 
-for N in 4
+for N in 5
 do
 
 
@@ -66,13 +67,14 @@ do
 for LR in $LR_
 do
 
-if [[ j -gt 0 ]]
-then
-    PREV_SEQ_LEN=$(((INPUT_SIZE)*${MAX_N_SEGMENTSS[j-1]}))
-    MODEL_CPT=../runs/lm_long/amt/${TASK_NAME}/$MODEL_NAME/lr${LRS[j-1]}_${SCHEDULER}_dmem${D_MEM}_${PREV_SEQ_LEN}-${MAX_N_SEGMENTSS[j-1]}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N 
-else
-    MODEL_CPT=None
-fi
+# if [[ j -gt 0 ]]
+# then
+#     PREV_SEQ_LEN=$(((INPUT_SIZE)*${MAX_N_SEGMENTSS[j-1]}))
+#     MODEL_CPT=../runs/lm_long/amt/${TASK_NAME}/$MODEL_NAME/lr${LRS[j-1]}_${SCHEDULER}_dmem${D_MEM}_${PREV_SEQ_LEN}-${MAX_N_SEGMENTSS[j-1]}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N 
+# else
+#     MODEL_CPT=None
+# fi
+MODEL_CPT=None
 
 echo RUNNING: TASK_NAME SRC_LEN MODEL_NAME MODEL_CLS N_SEG MEMORY_SIZE INPUT_SEQ_LEN LR N
 echo RUNNING: $TASK_NAME $SRC_LEN $MODEL_NAME $BACKBONE_CLS $MAX_N_SEGMENTS $MEMORY_SIZE $INPUT_SEQ_LEN $LR $N
@@ -108,7 +110,10 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --clip_grad_value 1.0 \
         --save_best \
         --d_mem $D_MEM \
-        --layers_attr gpt_neox.layers
+        --layers_attr gpt_neox.layers \
+        --act_on
+        # --freeze_mem
+        # --repeat_state
 done
 done
 done

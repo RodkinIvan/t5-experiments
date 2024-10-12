@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
 export WANDB_PROJECT=babilong
-export CUDA_VISIBLE_DEVICES=1,2,3,4
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 export RWKV_JIT_ON=0
-export RWKV_HEAD_SIZE_A=64
+export RWKV_NO_CUDA=1
+export CHUNK_LEN=1
 NP=4
-# set -e
+set -e
 cd ../..
 
 CUBLAS_WORKSPACE_CONFIG=:4096:2
@@ -14,20 +15,20 @@ CUDA_LAUNCH_BLOCKING=1
 MODEL_TYPE=decoder
 MEMORY_CELL=baselines.rwkv.language_modeling:MemoryCell
 RECURRENT_WRAPPER=baselines.rwkv.language_modeling:RecurrentWrapper
-BACKBONE_CLS=baselines.rwkv.language_modeling:RWKV_v5
+BACKBONE_CLS=baselines.rwkv.language_modeling:RWKV_v6
 TASK_DATASET=qa1_single-supporting-fact
 NOISE_DATASET=pg19
 METRIC=exact_match
 
-MODEL_NAME=RWKV/rwkv-4-169m-pile
-TOKENIZER=RWKV/v5-Eagle-7B-HF  # backbone model
+MODEL_NAME=trash
+TOKENIZER=EleutherAI/pythia-160m  # backbone model
 SEGMENT_SIZE=512 # size of one segment in tokens
 TBS=32
 
-MAX_N_SEGMENTSS=(2)
-ITERSS=(5000)
+MAX_N_SEGMENTSS=(2 3 5 8)
+ITERSS=(5000 10000 10000 10000)
 # ITERSS=(1)
-BSS=(1)
+BSS=(4 2 1 1)
 
 
 for (( j=0; j<${#MAX_N_SEGMENTSS[@]}; j++ ))
@@ -79,7 +80,6 @@ accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29701 run_fine
         --batch_size $BS --gradient_accumulation_steps $GRAD_ACC_STEPS \
         --num_training_steps $((ITERS*2)) \
         --iters $ITERS \
-        --use_generate_on_valid \
         --save_best \
         --k2 $K2 \
         --optimizer AdamW  --weight_decay 0.01 \

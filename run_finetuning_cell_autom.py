@@ -90,14 +90,22 @@ parser.add_argument('--num_timesteps', type=int, default=None, help='number of t
 parser.add_argument('--num_test_timesteps', type=int, default=None, help='number of timesteps in test sample')
 parser.add_argument('--prediction_shift', type=int, default=1, help='num_timesteps between the last training steps and the predicted timestep')
 
+parser.add_argument('--repeat_state', action='store_true', default=False,
+                    help='repeat state in the input so the input look like: [s0, s1, s1, s2, s2, s3...]')
+
 parser.add_argument('--dataset_path', type=str, default="irodkin/1dCA_r2s20T20", help="path to saved datasets")
 parser.add_argument('--segment_size', type=int, default=128, help='number of useful tokens in a segment')
 parser.add_argument('--d_mem', type=int, default=None, help='number of rows in associative matrix')
 parser.add_argument('--layers_attr', type=str, default=None, help='attribute of model, which contains layers')
+
 parser.add_argument('--rewrite_setting', action='store_true', default=False,
                     help='keys can occur several times')
+parser.add_argument('--act_on', action='store_true', default=False,
+                    help='use Adaptive Computation Time')
 parser.add_argument('--no_denom', action='store_true', default=False,
                     help='use no denominator in ARMT')
+parser.add_argument('--freeze_mem', action='store_true', default=False,
+                    help='Freeze memory parameters in ARMT')
 parser.add_argument('--no_correction', action='store_true', default=False,
                     help='ARMT shmidhuber correction for rewriting')
 parser.add_argument('--desired_metric', type=float, default=1.0, help='metric to stop training')
@@ -148,6 +156,7 @@ from tqdm.auto import tqdm
 
 
 if __name__ == '__main__':
+    torch.autograd.set_detect_anomaly(True)
     args = parser.parse_args()
     
     if args.num_test_timesteps is None:
@@ -188,18 +197,25 @@ if __name__ == '__main__':
     import os
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     if args.model_type == 'decoder':
-        block_size = (args.segment_size + 1) * 2
+        block_size = (args.segment_size + 1) * (1 + args.repeat_state)
         sep_token, gen_token, eos_token = 100, 101, 102
 
         def collate_fn(batch, valid=False):
             for i, b in enumerate(batch):
                 steps = args.num_test_timesteps if valid else args.num_timesteps
                 shift = args.prediction_shift
-                batch[i] = {
-                    # concatenate input_ids_t for the corresponding steps
-                    'input_ids': [i for t in range(steps-1) if f'input_ids_{t}' in b for i in [sep_token,] + b[f'input_ids_{t}'] + [sep_token,]  + b[f'input_ids_{t+1}']]
-                }
-                batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps-1}'] + [sep_token,] + b[f'input_ids_{steps+shift-1}']
+                if args.repeat_state:
+                    batch[i] = {
+                        # concatenate input_ids_t for the corresponding steps
+                        'input_ids': [i for t in range(steps-1) if f'input_ids_{t}' in b for i in [sep_token,] + b[f'input_ids_{t}'] + [sep_token,]  + b[f'input_ids_{t+1}']]
+                    }
+                    batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps-1}'] + [sep_token,] + b[f'input_ids_{steps+shift-1}']
+                else:
+                    batch[i] = {
+                        # concatenate input_ids_t for the corresponding steps
+                        'input_ids': [i for t in range(steps) if f'input_ids_{t}' in b for i in [sep_token,] + b[f'input_ids_{t}']]
+                    }
+                    batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps+shift-1}']
                 batch[i]['labels'] = batch[i]['input_ids'].copy()
                 batch[i]['attention_mask'] = [1 for _ in batch[i]['input_ids']] 
                 
@@ -235,11 +251,11 @@ if __name__ == '__main__':
     per_worker_batch_size = args.batch_size * args.gradient_accumulation_steps
     kwargs = {'pin_memory': True, 'num_workers': args.data_n_workers}
     train_dataloader = DataLoader(train_dataset, batch_size=per_worker_batch_size,  generator=train_rnd_generator,
-                                  collate_fn=collate_fn, **kwargs)
+                                  collate_fn=collate_fn, **kwargs, drop_last=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=per_worker_batch_size,
-                                  collate_fn=collate_fn, **kwargs)
+                                  collate_fn=collate_fn, **kwargs, drop_last=True)
     test_dataloader = DataLoader(test_dataset, batch_size=per_worker_batch_size,
-                                  collate_fn=collate_fn, **kwargs)
+                                  collate_fn=collate_fn, **kwargs, drop_last=True)
     
 
     if args.valid_interval is None:
@@ -280,6 +296,9 @@ if __name__ == '__main__':
         if args.d_mem is not None:
             mem_cell_args['d_mem'] = args.d_mem
 
+        if args.act_on:
+            mem_cell_args['act_on'] = args.act_on
+
         if args.num_mem_tokens is not None:
             mem_cell_args['num_mem_tokens'] = args.num_mem_tokens
             mem_cell_args['wrap_pos'] = args.wrap_pos
@@ -287,17 +306,23 @@ if __name__ == '__main__':
             mem_cell_args['layers_attr'] = args.layers_attr
         if args.no_denom is not None:
             mem_cell_args['use_denom'] = not args.no_denom
+        if args.freeze_mem is not None:
+            mem_cell_args['freeze_mem'] = args.freeze_mem
 
         if args.no_correction:
             mem_cell_args['correction'] = False
 
+        
+
         cell = memory_cell_cls(**mem_cell_args)
+
         model = recurrent_wrapper_cls(cell, 
                                       segment_size=block_size,
                                       max_n_segments=args.max_n_segments, 
                                     #   vary_n_segments=args.vary_n_segments,
                                       k2=args.k2,
-                                      segment_alignment=args.segment_alignment
+                                      segment_alignment=args.segment_alignment,
+                                      act_on=args.act_on
         )
                                     
 
@@ -362,7 +387,9 @@ if __name__ == '__main__':
             if 'loss' in key: 
                 data[key] = batch[key]
         # else:
-
+        if args.act_on:
+            data['n_updates'] = output['n_updates']
+            data['remainders'] = output['remainders']
         return data
 
     # HF datasets can compute metrics on each gpu process and then aggregate them on process with rank 0
@@ -409,7 +436,9 @@ if __name__ == '__main__':
                 metrics[f'ce_loss_{i}'] = data[f'ce_loss_{i}'].mean()
         metrics['bit_accuracy'] = np.mean(np.array(y) == np.array(p))
         metrics['exact_match'] = np.mean([np.array_equal(p_, y_) for p_, y_ in zip(p, y)])
-
+        if args.act_on:
+            metrics['n_updates'] = torch.mean(data['n_updates']).item()
+            metrics['remainders'] = torch.mean(data['remainders']).item()
         return metrics
 
     # accelerate
