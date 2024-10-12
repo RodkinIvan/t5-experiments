@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 export WANDB_PROJECT=babilong
-export CUDA_VISIBLE_DEVICES=0,1,2,3
+# export CUDA_VISIBLE_DEVICES=0,1,2,3
 export RWKV_JIT_ON=0
 export RWKV_NO_CUDA=1
 export CHUNK_LEN=1
@@ -20,15 +20,16 @@ TASK_DATASET=qa1_single-supporting-fact
 NOISE_DATASET=pg19
 METRIC=exact_match
 
-MODEL_NAME=trash
+MODEL_NAME=~/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth
 TOKENIZER=EleutherAI/pythia-160m  # backbone model
 SEGMENT_SIZE=512 # size of one segment in tokens
 TBS=32
 
-MAX_N_SEGMENTSS=(2 3 5 8)
-ITERSS=(5000 10000 10000 10000)
+MAX_N_SEGMENTSS=(2 3 5 8 16 32)
+MAX_VAL_SEGMENTSS=(2 3 5 8 16 128)
+ITERSS=(5000 10000 10000 10000 10000 10000)
 # ITERSS=(1)
-BSS=(4 2 1 1)
+BSS=(4 2 1 1 1 1)
 
 
 for (( j=0; j<${#MAX_N_SEGMENTSS[@]}; j++ ))
@@ -37,6 +38,7 @@ do
 BS=${BSS[j]}
 ITERS=${ITERSS[j]}
 MAX_N_SEGMENTS=${MAX_N_SEGMENTSS[j]}
+MAX_VAL_SEGMENTS=${MAX_VAL_SEGMENTSS[j]}
 
 GRAD_ACC_STEPS=$(($TBS/($BS*$NP)))
 SCHEDULER=linear
@@ -50,12 +52,13 @@ do
 K2=-1   # BPTT unroll length
 
 SAMPLE_SIZE=$(($SEGMENT_SIZE*$MAX_N_SEGMENTS)) # length of task sample in tokens
-ACCEL_CONFIG=./accel_configs/accelerate.yaml
+TEST_SAMPLE_SIZE=$(($SEGMENT_SIZE*$MAX_VAL_SEGMENTS))
+ACCEL_CONFIG=./accel_configs/deepspeed.yaml
 
 
 if [[ j -gt 0 ]]
 then
-    MODEL_CPT=/home/rodkin/runs/babilong/${TASK_DATASET}/rwkv/$MODEL_NAME/lr${LR}_${SCHEDULER}_adamw_wd1e-03_${MAX_N_SEGMENTSS[j-1]}x${SEGMENT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_bptt-${K2}/run_$N 
+    MODEL_CPT=~/runs/babilong/${TASK_DATASET}/rwkv/$MODEL_NAME/lr${LR}_${SCHEDULER}_adamw_wd1e-03_${MAX_N_SEGMENTSS[j-1]}x${SEGMENT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_bptt-${K2}/run_$N 
 else
     MODEL_CPT=None
 fi
@@ -64,11 +67,11 @@ echo RUNNING: TASK_DATASET $TASK_DATASET MEMORY_SIZE $MEMORY_SIZE SEGMENT_SIZE $
 echo SAMPLE_SIZE $SAMPLE_SIZE MODEL_NAME $MODEL_NAME LR $LR N $N
 echo gradient accumulation steps $GRAD_ACC_STEPS
 
-accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29701 run_finetuning_babilong_rmt.py \
+accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29701 --mixed_precision fp16 --num_processes $NP run_finetuning_babilong_rmt.py \
         --task_dataset $TASK_DATASET \
         --noise_dataset $NOISE_DATASET \
-        --babi_path /home/rodkin/lab/t5-experiments/data/tasks_1-20_v1-2/en-10k \
-        --model_path /home/rodkin/runs/babilong/${TASK_DATASET}/rwkv/$MODEL_NAME/lr${LR}_${SCHEDULER}_adamw_wd1e-03_${MAX_N_SEGMENTS}x${SEGMENT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_bptt-${K2}/run_$N \
+        --babi_path ~/lab/associative-recurrent-memory-transformer/data/tasks_1-20_v1-2/en-10k \
+        --model_path ~/runs/babilong/${TASK_DATASET}/rwkv/$MODEL_NAME/lr${LR}_${SCHEDULER}_adamw_wd1e-03_${MAX_N_SEGMENTS}x${SEGMENT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_bptt-${K2}/run_$N \
         --from_pretrained $MODEL_NAME \
         --model_type $MODEL_TYPE \
         --memory_cell_cls $MEMORY_CELL \
@@ -76,6 +79,7 @@ accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29701 run_fine
         --model_cls $BACKBONE_CLS \
         --segment_size $SEGMENT_SIZE \
         --sample_size $SAMPLE_SIZE \
+        --test_sample_size $TEST_SAMPLE_SIZE \
         --max_n_segments $MAX_N_SEGMENTS\
         --batch_size $BS --gradient_accumulation_steps $GRAD_ACC_STEPS \
         --num_training_steps $((ITERS*2)) \

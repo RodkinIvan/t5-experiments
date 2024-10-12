@@ -28,8 +28,8 @@ logger = logging.getLogger('')
 
 
 # if CUDA_VISIBLE_DEVICES is not set make all gpus visible
-if os.environ.get('CUDA_VISIBLE_DEVICES', None) is None:
-    os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(i) for i in range(torch.cuda.device_count())])
+# if os.environ.get('CUDA_VISIBLE_DEVICES', None) is None:
+#     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(i) for i in range(torch.cuda.device_count())])
 
 logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ['CUDA_VISIBLE_DEVICES']}")
 # first call to torch.cuda.device_count() sets visible gpus, following calls will not change the result
