@@ -48,34 +48,6 @@ class RWKVModel(torch.nn.Module):
     def get_input_embeddings(self):
         return self.model.emb
         
-
-# class RWKV_v5_hf(torch.nn.Module):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__()
-#         self.model = RwkvForCausalLM.from_pretrained(*args, **kwargs)
-
-#     @staticmethod
-#     def from_pretrained(*_args, **kwargs):
-#         model = RWKV_v5_hf(*_args, **kwargs)
-#         return model
-
-#     def forward(self, input_ids, state=None, attention_mask=None):
-#         out = self.model(input_ids, state=state)
-#         return out.logits, out.state
-    
-#     def generate(self, input_ids, attention_mask, pad_token_id, max_new_tokens, state, max_length):
-#         generation_outputs = [[]]
-#         out, state = self.forward(input_ids=input_ids, state=state)
-#         device = next(self.model.parameters()).device
-#         assert input_ids.size(0) == 1
-#         for i in range(max_new_tokens):
-#             token = out[0, -1].argmax(-1)
-#             generation_outputs[0].append(token)
-#             out, state = self.forward(
-#                 input_ids=torch.tensor([[token.item()]],dtype=torch.long, device=device), 
-#                 state=state)
-#         return generation_outputs
-
 class RWKV_v5_tiny(torch.nn.Module):
     def __init__(self, **args):
         super().__init__()
@@ -124,11 +96,10 @@ class RWKV_v6(RWKVModel):
         )
     @staticmethod
     def from_pretrained(*_args, **kwargs):
-
+        load = _args[0]
         args = dict(
-            # load_model='/home/ivan.rodkin/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth',
-            load_model='/home/ivan.rodkin/lab/rwkv6-173m-wikitext-103.pth',
-            grad_cp=False
+            load_model=load,
+            grad_cp=True
         )
         model = RWKV_v6(**args)
 
@@ -262,7 +233,8 @@ class RecurrentWrapper(torch.nn.Module):
                 output_attentions=None, 
                 output_hidden_states=None,
                 input_segmented=None,
-                sliding_window=None
+                sliding_window=None,
+                output_only_last_segment=False,
                 ):
         memory_state = None
 
@@ -271,7 +243,9 @@ class RecurrentWrapper(torch.nn.Module):
         for seg_num, segment in enumerate(segmented):
             cell_out, memory_state = self.memory_cell(**segment, memory_state=memory_state)
             
-            cell_outputs.append(cell_out)
+            if (not output_only_last_segment) or (seg_num == len(segmented) - 1):
+                cell_outputs.append(cell_out)
+            
             self.manage_gradients(memory_state, seg_num)
 
         out = self.process_outputs(cell_outputs, labels=labels, 
@@ -326,6 +300,7 @@ class RecurrentWrapper(torch.nn.Module):
         out = CausalLMOutputWithCrossAttentions()
         full_logits = torch.cat([o.logits for o in cell_outputs], dim=1)
         labels = kwargs.get('labels')
+        labels = labels[:, -full_logits.size(1):]
         if labels is not None:
             shift_labels = labels[..., 1:].contiguous()
             shift_logits = full_logits[..., :-1, :].contiguous()
@@ -334,10 +309,11 @@ class RecurrentWrapper(torch.nn.Module):
             
             loss_fct = CrossEntropyLoss()
             labels_mask = kwargs.get('labels_mask')
+            labels_mask = labels_mask[:, -full_logits.size(1):]
             if labels_mask is not None:
                 shift_mask = labels_mask[..., :-1].contiguous()
 
-                flat_labels = flat_labels[shift_mask.view(-1)]
+                flat_labels = flat_labels[shift_mask.view(-1)] #
                 flat_logits = flat_logits[shift_mask.view(-1)]
                 
             out['loss'] = loss_fct(flat_logits, flat_labels)

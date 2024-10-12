@@ -178,9 +178,9 @@ class AssociativeLayerWrapper(torch.nn.Module):
 
     def zero_mem(self):
         self.first_seg = True
-        self.W_mem = torch.zeros(1, self.n_heads, self.d_key // self.n_heads, self.d_model // self.n_heads)
+        self.W_mem = torch.zeros(1, self.n_heads, self.d_key // self.n_heads, self.d_model // self.n_heads).to(next(self.parameters()).dtype)
         if self.use_denom:
-            self.z = torch.zeros(1, self.n_heads, self.d_key // self.n_heads)
+            self.z = torch.zeros(1, self.n_heads, self.d_key // self.n_heads).to(next(self.parameters()).dtype)
         self.seg_num = 0
 
 
@@ -382,6 +382,7 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
                 output_attentions=None, 
                 output_hidden_states=None,
                 input_segmented=False,
+                output_only_last_segment=False,
                 ):
         
         sliding_window = self.rmt_config['sliding_window'] if 'sliding_window' in self.rmt_config else False
@@ -427,7 +428,8 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
                     ]
                     for seg_kv in cell_out['past_key_values']
                 ]
-            cell_outputs.append(cell_out)
+            if (not output_only_last_segment) or (seg_num == len(segmented) - 1):
+                cell_outputs.append(cell_out)
         self.memory_cell.zero_mem()
 
 
@@ -471,6 +473,7 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
         full_logits = torch.cat([o.logits for o in cell_outputs], dim=1)
         
         labels = kwargs.get('labels')
+        labels = labels[:, -full_logits.size(1):]
         if labels is not None:
             shift_labels = labels[..., 1:].contiguous()
             shift_logits = full_logits[..., :-1, :].contiguous()
@@ -479,6 +482,7 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             
             loss_fct = CrossEntropyLoss()
             labels_mask = kwargs.get('labels_mask')
+            labels_mask = labels_mask[:, -full_logits.size(1):]
             if labels_mask is not None:
                 shift_mask = labels_mask[..., :-1].contiguous()
 

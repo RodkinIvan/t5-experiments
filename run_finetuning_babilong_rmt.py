@@ -87,6 +87,7 @@ parser.add_argument('--model_type', type=str, default='encoder-decoder',
                          '(default: encoder-decoder)')
 parser.add_argument('--model_suffix', type=str, default='', help='pretrained model suffix after pytorch_model and before .bin')
 
+
 # Babilong parameters
 parser.add_argument('--sample_size', type=int, default=None, help='max number of tokens in sample')
 parser.add_argument('--test_sample_size', type=int, default=None, help='max number of tokens in sample')
@@ -114,6 +115,9 @@ parser.add_argument('--d_mem', type=int, default=None, help='number of rows in a
 parser.add_argument('--layers_attr', type=str, default=None, help='attribute of model, which contains layers')
 parser.add_argument('--wrap_pos', action='store_true', default=False,
                     help='Wrap positional encoding for memory tokens (default: False)')
+
+parser.add_argument('--no_denom', action='store_true', default=None,
+                    help='use no denominator in ARMT')
 parser.add_argument('--desired_metric', type=float, default=1.0, help='metric to stop training')
 # tokenizer
 # todo: add wordpiece tokenizers support?
@@ -179,17 +183,15 @@ if __name__ == '__main__':
 
     prepare_run(args, logger, logger_fmt)
 
-    if not args.from_pretrained:
-        if args.tokenizer is not None:
-            tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
-        elif args.rwkv_tokenizer  is not None:
-            tokenizer = MT_TRIE_TOKENIZER(args.rwkv_tokenizer)
-            tokenizer.__call__ = lambda text, *y: tokenizer.encode(text)
-        else:
-            raise 'Need tokenizer'
-    else:
+    if args.tokenizer is not None:
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
+    elif args.rwkv_tokenizer  is not None:
+        tokenizer = MT_TRIE_TOKENIZER(args.rwkv_tokenizer)
+        tokenizer.__call__ = lambda text, *y: tokenizer.encode(text)
+    elif not args.from_pretrained:
         tokenizer = AutoTokenizer.from_pretrained(args.from_pretrained, trust_remote_code=True, padding_side='left')
-
+    else:
+        raise 'Need tokenizer'
 
     # Prepare datasets
     logger.info(f'preparing dataset for {args.task_dataset}')
@@ -365,6 +367,9 @@ if __name__ == '__main__':
         
         if args.layers_attr is not None:
             mem_cell_args['layers_attr'] = args.layers_attr
+        if args.no_denom is not None:
+            mem_cell_args['use_denom'] = not args.no_denom
+
         cell = memory_cell_cls(**mem_cell_args)
         if args.segment_alignment not in {None, 'left'}:
             logger.info(f"Using custom segment alignment: {args.segment_alignment}")
@@ -385,8 +390,7 @@ if __name__ == '__main__':
 
         ## load cpt of rmt
         if args.model_cpt and args.model_cpt != 'None':
-<<<<<<< Updated upstream
-            if 'mamba' not in args.model_cpt:
+            if 'mamba' not in args.model_cpt and 'rwkv' not in args.model_cpt:
                 model_cpt = os.path.join(args.model_cpt, "model_best/pytorch_model.bin")
                 cpt = torch.load(model_cpt, map_location='cpu')
                 model.load_state_dict(cpt)
@@ -396,16 +400,9 @@ if __name__ == '__main__':
                 model_cpt = os.path.join(args.model_cpt, "model_best/model.safetensors")
                 cpt = safetensors.torch.load_file(model_cpt)
                 w = model.load_state_dict(cpt, strict=False)
-                model.memory_cell.model.tie_weights()
-                logger.info(f'loaded mamba with mis w {w}')
-=======
-            model_cpt = os.path.join(args.model_cpt, "model_best/pytorch_model"+args.model_suffix+".bin")
-            cpt = torch.load(model_cpt, map_location='cpu')
-            model.load_state_dict(cpt)
-            logger.info(f'Loaded RMT state dict from: {args.model_cpt}')
-            logger.info(f'model suffix \"{args.model_suffix}\"')
-            
->>>>>>> Stashed changes
+                if 'mamba' in args.model_cpt:
+                    model.memory_cell.model.tie_weights()
+                logger.info(f'loaded model with mis w {w}')
 
     if args.freeze_model_weights:
         for n, p in model.named_parameters():
@@ -445,7 +442,7 @@ if __name__ == '__main__':
         data['target_text'] = batch['target_text']
         if 'logits' in output:
             data['predictions'] = torch.argmax(output['logits'].detach(), dim=-1)
-            data['predicted_labels'] = [p[m] for p, m in zip(data['predictions'], batch['labels_mask'])]
+            data['predicted_labels'] = [p[m[-len(p):]] for p, m in zip(data['predictions'], batch['labels_mask'])]
         if 'generation_outputs' in output:
             data['generation_outputs'] = output['generation_outputs']
         return data
@@ -477,8 +474,8 @@ if __name__ == '__main__':
     # - add support of HF metrics and turn off aggregation in case if metric has .add_batch method
     # scrolls_metric = datasets.load_metric(scrolls_metric_path, args.task_name, keep_in_memory=True)
 
-    model, optimizer = accelerator.prepare(model, optimizer)
-    # model, optimizer, _ = accelerator.prepare(model, optimizer, train_dataloader)
+    # model, optimizer = accelerator.prepare(model, optimizer)
+    model, optimizer, _ = accelerator.prepare(model, optimizer, train_dataloader)
 
     def metrics_fn(data):
         # compute metrics based on stored labels, predictions, ...
@@ -536,7 +533,8 @@ if __name__ == '__main__':
                       ###booydar
                       batch_metrics_fn=batch_metrics_fn,
                       generate_kwargs={"pad_token_id": id_pad_value, "max_new_tokens":10},
-                      stop_metric_condition=lambda m: m >= args.desired_metric
+                      stop_metric_condition=lambda m: m >= args.desired_metric,
+                      forward_kwargs={'output_only_last_segment': True}
     )
 
     if not args.validate_only:
