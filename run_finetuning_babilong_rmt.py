@@ -110,6 +110,9 @@ parser.add_argument('--segment_alignment', type=str, help='way of aligning segme
 parser.add_argument('--k2', type=int, default=-1, help='number of last segments used by backward')
 parser.add_argument('--freeze_model_weights', action='store_true', default=False,
                     help='Stop training all model weights except memory layers')
+
+parser.add_argument('--freeze_mem', action='store_true', default=False,
+                    help='Freeze memory parameters in ARMT')
 parser.add_argument('--backbone_cpt', type=str, default=None, help='backbone model checkpoint path')
 parser.add_argument('--d_mem', type=int, default=None, help='number of rows in associative matrix')
 parser.add_argument('--layers_attr', type=str, default=None, help='attribute of model, which contains layers')
@@ -369,7 +372,8 @@ if __name__ == '__main__':
             mem_cell_args['layers_attr'] = args.layers_attr
         if args.no_denom is not None:
             mem_cell_args['use_denom'] = not args.no_denom
-
+        if args.freeze_mem is not None:
+            mem_cell_args['freeze_mem'] = args.freeze_mem
         cell = memory_cell_cls(**mem_cell_args)
         if args.segment_alignment not in {None, 'left'}:
             logger.info(f"Using custom segment alignment: {args.segment_alignment}")
