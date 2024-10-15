@@ -2,7 +2,7 @@ import os
 import json
 import argparse
 
-save_folder = "/home/rodkin/rmt/wip/base_models/gptconfigs/"
+save_folder = "/home/cosmos/VScode Projects/coglab/NLP/pytorch-adaptive-computation-time/pytorch_adaptive_computation_time/associative-recurrent-memory-transformer/base_models/gptconfigs"
 default_config = {
   "architectures": [
     "GPTNeoXForCausalLM"
