@@ -9,6 +9,7 @@ from munch import Munch
 import os
 
 from modeling_amt.act_utils import ACT_basic, gen_timing_signal
+from baselines.rwkv.language_modeling import RWKVModel
 
 def dpfp(x, nu=1):
   x = torch.cat([r(x), r(-x)], dim=-1)
@@ -242,6 +243,9 @@ class AssociativeMemoryCell(torch.nn.Module):
         ):
         super().__init__()
         self.model = base_model
+
+        self.RWKV_ARMT = isinstance(self.model, RWKVModel)
+
         self.num_mem_tokens = num_mem_tokens
         self.d_mem = d_mem
         self.d_model = base_model.get_input_embeddings().embedding_dim
@@ -313,7 +317,7 @@ class AssociativeMemoryCell(torch.nn.Module):
             self.zero_mem()
 
         seg_kwargs = self.process_input(input_ids, **kwargs)
-        if os.environ.get('RWKV_ARMT') == '1' and not self.layers[0].generate_mode:
+        if self.RWKV_ARMT and not self.layers[0].generate_mode:
             # input1 = dict()
             # input2 = dict()
             # for item in seg_kwargs:
@@ -380,7 +384,7 @@ class AssociativeMemoryCell(torch.nn.Module):
             return mask
     
     def process_output(self, model_outputs, labels, labels_mask, **kwargs):
-        if (self.num_mem_tokens not in {0, None}) and os.environ.get('RWKV_ARMT') != '1':
+        if (self.num_mem_tokens not in {0, None}) and not self.RWKV_ARMT:
             out = CausalLMOutputWithCrossAttentions()
             out['logits'] = model_outputs.logits[:, :-self.num_mem_tokens]
             if kwargs.get('output_hidden_states'):
