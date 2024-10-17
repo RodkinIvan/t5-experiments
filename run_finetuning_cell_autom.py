@@ -104,6 +104,8 @@ parser.add_argument('--rewrite_setting', action='store_true', default=False,
 parser.add_argument('--act_on', action='store_true', default=False,
                     help='use Adaptive Computation Time')
 parser.add_argument('--max_hop', type=int, default=4, help='number of cycles in ACT')
+parser.add_argument('--time_penalty', type=float, default=0.0, help='time penalty coefficient in ACT loss')
+
 
 parser.add_argument('--no_denom', action='store_true', default=False,
                     help='use no denominator in ARMT')
@@ -327,7 +329,8 @@ if __name__ == '__main__':
                                     #   vary_n_segments=args.vary_n_segments,
                                       k2=args.k2,
                                       segment_alignment=args.segment_alignment,
-                                      act_on=args.act_on
+                                      act_on=args.act_on,
+                                      time_penalty=args.time_penalty
         )
                                     
 

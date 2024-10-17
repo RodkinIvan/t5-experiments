@@ -112,7 +112,8 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --d_mem $D_MEM \
         --layers_attr gpt_neox.layers \
         --act_on \
-        --max_hop 1
+        --max_hop 2 \
+        --time_penalty 0.0001
         # --freeze_mem
         # --repeat_state
 done

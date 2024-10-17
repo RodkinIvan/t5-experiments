@@ -507,7 +507,6 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
                 ]
             if (not output_only_last_segment) or (seg_num == len(segmented) - 1):
                 cell_outputs.append(cell_out)
-        self.memory_cell.zero_mem()
 
         out = self.process_outputs(cell_outputs, labels=labels, 
                                    labels_mask=labels_mask,
@@ -597,7 +596,8 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             n_updates = torch.mean(torch.stack(n_updates, dim=0))
             out['n_updates'] = n_updates.detach().cpu()
             out['remainders'] = remainders.detach().cpu()
-            out['loss'] = out['loss'] + 0.0 * remainders
+            time_penalty = self.rmt_config['time_penalty']
+            out['loss'] = out['loss'] + time_penalty * remainders
         
         return out 
         
