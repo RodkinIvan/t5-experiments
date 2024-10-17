@@ -100,8 +100,11 @@ parser.add_argument('--layers_attr', type=str, default=None, help='attribute of 
 
 parser.add_argument('--rewrite_setting', action='store_true', default=False,
                     help='keys can occur several times')
+
 parser.add_argument('--act_on', action='store_true', default=False,
                     help='use Adaptive Computation Time')
+parser.add_argument('--max_hop', type=int, default=4, help='number of cycles in ACT')
+
 parser.add_argument('--no_denom', action='store_true', default=False,
                     help='use no denominator in ARMT')
 parser.add_argument('--freeze_mem', action='store_true', default=False,
@@ -298,6 +301,8 @@ if __name__ == '__main__':
 
         if args.act_on:
             mem_cell_args['act_on'] = args.act_on
+            mem_cell_args['max_hop'] = args.max_hop
+
 
         if args.num_mem_tokens is not None:
             mem_cell_args['num_mem_tokens'] = args.num_mem_tokens

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=1
-NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
+export CUDA_VISIBLE_DEVICES=0,1
+NP=2 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
 cd ../..
@@ -22,7 +22,7 @@ MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
 SHIFTS=(2)
 LRS=(3e-4)
-BSS=(256)
+BSS=(128)
 
 MEMORY_SIZE=16
 INPUT_TOKENS=20
@@ -111,7 +111,8 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --save_best \
         --d_mem $D_MEM \
         --layers_attr gpt_neox.layers \
-        --act_on
+        --act_on \
+        --max_hop 1
         # --freeze_mem
         # --repeat_state
 done

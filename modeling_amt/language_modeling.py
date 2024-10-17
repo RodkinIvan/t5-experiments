@@ -189,10 +189,22 @@ class AssociativeLayerWrapper(torch.nn.Module):
 
 
 class AdaptiveAssociativeLayerWrapper(AssociativeLayerWrapper):
-    def __init__(self, layer, d_model, num_mem_tokens, d_mem, n_heads=1, correction=True, info=None, use_denom=True, gating=False) -> None:
+    def __init__(self, 
+                 layer, 
+                 d_model, 
+                 num_mem_tokens, 
+                 d_mem, 
+                 max_hop,
+                 n_heads=1, 
+                 correction=True, 
+                 info=None, 
+                 use_denom=True, 
+                 gating=False,
+                 
+                ) -> None:
         super().__init__(layer, d_model, num_mem_tokens, d_mem, n_heads, correction, info, use_denom, gating)
         self.act = ACT_basic(d_model)
-        self.depth = 4
+        self.depth = max_hop
         self.max_length = 1024
 
         self.timing_signal = gen_timing_signal(self.max_length, d_model)
@@ -239,7 +251,8 @@ class AssociativeMemoryCell(torch.nn.Module):
                  use_denom=True, 
                  gating=False, 
                  freeze_mem=False,
-                 act_on=False
+                 act_on=False,
+                 max_hop=4,
         ):
         super().__init__()
         self.model = base_model
@@ -268,6 +281,8 @@ class AssociativeMemoryCell(torch.nn.Module):
                 use_denom=use_denom,
                 gating=gating
             )
+            if act_on:
+                kw['max_hop'] = max_hop
             self.layers[i] = AssociativeLayerWrapper(**kw) if not act_on else AdaptiveAssociativeLayerWrapper(**kw)
         self.create_memory(num_mem_tokens)
         self.wrap_pos = wrap_pos
