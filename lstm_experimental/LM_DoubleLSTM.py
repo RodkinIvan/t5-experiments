@@ -266,38 +266,3 @@ class DoubleLSTMModel(pl.LightningModule):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
 
-# Train the model
-def train_model(file_path):
-    embedding_dim = 8
-    hidden_size = 256
-    batch_size = 32
-    learning_rate = 1e-4
-    max_epochs = 100
-    num_layers = 1
-
-    # Initialize the data module
-    data_module = BinarySumDataModule(file_path, batch_size=batch_size)
-
-    # Initialize the model
-    model = DoubleLSTMModel(
-        vocab_size=vocab_size,
-        embedding_dim=embedding_dim,
-        num_layers=num_layers,
-        hidden_size=hidden_size,
-        lr=learning_rate
-    )
-
-    # Setup WandB Logger
-    wandb_logger = WandbLogger(project="bin_sum_task", name="lstm_experiment")
-    # from lightning.pytorch.callbacks import LearningRateMonitor
-    # lr_monitor = LearningRateMonitor(logging_interval='step')
-
-    # Initialize the trainer
-    trainer = pl.Trainer(max_epochs=max_epochs, logger=wandb_logger) #, callbacks=[lr_monitor])
-
-    # Train the model
-    trainer.fit(model, data_module)
-
-
-# Assuming the binary sum dataset is stored at 'binary_pairs_sum.tsv'
-train_model('/home/cosmos/VScode Projects/coglab/NLP/pytorch-adaptive-computation-time/data/binary_pairs_sum.tsv')
