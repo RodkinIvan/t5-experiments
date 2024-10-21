@@ -49,4 +49,4 @@ class DataCollatorWithUniformRandomOffsetsForCausalLM_copy(DataCollatorForLangua
             "labels": concatenated_inputs_labels.clone()  # Copy for labels as usual in causal LM
         }
               
-data_collator = DataCollatorWithUniformRandomOffsetsForCausalLM_copy(tokenizer, mlm=False, max_offset=30)
+# data_collator = DataCollatorWithUniformRandomOffsetsForCausalLM_copy(tokenizer, mlm=False, max_offset=30)

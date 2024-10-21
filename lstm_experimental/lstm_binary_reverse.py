@@ -8,7 +8,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 from LM_DoubleLSTM import DoubleLSTMModel
 
-from processing import DataCollatorWithUniformRandomOffsetsForCausalLM_reverse
+from processing.reverse_collator import DataCollatorWithUniformRandomOffsetsForCausalLM_reverse
 
 # Define the token mapping for the Binary Reverse Task
 token_mapping = {

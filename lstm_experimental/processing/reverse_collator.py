@@ -41,5 +41,5 @@ class DataCollatorWithUniformRandomOffsetsForCausalLM_reverse(DataCollatorForLan
             "labels": concatenated_labels  # Labels are reversed inputs
         }
 
-# Example usage
-data_collator = DataCollatorWithUniformRandomOffsetsForCausalLM_reverse(tokenizer, mlm=False, max_offset=30)
+# # Example usage
+# data_collator = DataCollatorWithUniformRandomOffsetsForCausalLM_reverse(tokenizer, mlm=False, max_offset=30)
