@@ -86,10 +86,11 @@ from transformers import PreTrainedTokenizer
 class BinaryReverseTokenizer(PreTrainedTokenizer):
     def __init__(self, token_mapping):
         # Initialize the PreTrainedTokenizer with necessary variables
-        super().__init__(pad_token='<PAD>', eos_token='=', unk_token='<UNK>')
         self.token_mapping = token_mapping
         self.vocab_size = len(token_mapping)
         self.id_to_token = {v: k for k, v in token_mapping.items()}  # Reverse mapping
+
+        super().__init__(pad_token='<PAD>', eos_token='=', unk_token='<UNK>')
 
     def _tokenize(self, text):
         # Tokenize the input string by simply mapping each character to its corresponding token ID
