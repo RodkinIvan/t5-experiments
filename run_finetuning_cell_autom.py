@@ -105,6 +105,7 @@ parser.add_argument('--act_on', action='store_true', default=False,
                     help='use Adaptive Computation Time')
 parser.add_argument('--max_hop', type=int, default=4, help='number of cycles in ACT')
 parser.add_argument('--time_penalty', type=float, default=0.0, help='time penalty coefficient in ACT loss')
+parser.add_argument('--act_type', type=str, default=None, help='what is in ACT (options: layer, associative)')
 
 
 parser.add_argument('--no_denom', action='store_true', default=False,
@@ -304,6 +305,8 @@ if __name__ == '__main__':
         if args.act_on:
             mem_cell_args['act_on'] = args.act_on
             mem_cell_args['max_hop'] = args.max_hop
+            if args.act_type is not None:
+                mem_cell_args['act_type'] = args.act_type
 
 
         if args.num_mem_tokens is not None:
@@ -459,7 +462,8 @@ if __name__ == '__main__':
                       keep_for_metrics_fn=keep_for_metrics_fn, metrics_fn=metrics_fn,
                       ###booydar
                       batch_metrics_fn=batch_metrics_fn,
-                      stop_metric_condition=lambda m: m >= args.desired_metric
+                      stop_metric_condition=lambda m: m >= args.desired_metric,
+                      forward_kwargs={'output_only_last_segment': True}
                       )
 
     # try:
