@@ -31,7 +31,7 @@ class BinaryReverseDataset(Dataset):
             token_mapping (dict): Mapping from tokens to integers.
         """
         # Ensure that all binary numbers have a length of 40
-        self.data = data[data['X'].apply(len) == 400].reset_index(drop=True)
+        self.data = data[data['X'].apply(len) == 40].reset_index(drop=True)
         self.token_mapping = token_mapping
 
     def __len__(self):
@@ -195,8 +195,20 @@ def train_model_reverse(file_path):
     # from lightning.pytorch.callbacks import LearningRateMonitor
     # lr_monitor = LearningRateMonitor(logging_interval='step')
 
+    import os
+    from pytorch_lightning.callbacks import ModelCheckpoint
+
+    # Configure the ModelCheckpoint callback to save the best model (with the lowest val_loss)
+    checkpoint_callback = ModelCheckpoint(
+        dirpath='./checkpoints',  # Directory to save the checkpoint
+        filename='best-checkpoint-{val_loss:.2f}',  # Base name for the saved file
+        save_top_k=1,  # Save only the top 1 model
+        verbose=True,
+        monitor='val_loss',  # Monitor validation loss
+        mode='min'  # We want the model with the lowest validation loss
+    )
     # Initialize the trainer
-    trainer = pl.Trainer(max_epochs=max_epochs, logger=wandb_logger) #, callbacks=[lr_monitor])
+    trainer = pl.Trainer(max_epochs=max_epochs, logger=wandb_logger, callbacks=[checkpoint_callback]) #, callbacks=[lr_monitor])
 
     # Train the model
     trainer.fit(model, data_module)
