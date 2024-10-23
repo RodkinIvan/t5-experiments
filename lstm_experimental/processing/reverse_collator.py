@@ -6,7 +6,7 @@ class DataCollatorWithUniformRandomOffsetsForCausalLM_reverse(DataCollatorForLan
     def __init__(self, tokenizer, mlm=False, mlm_probability=0.15, max_offset=30):
         super().__init__(tokenizer, mlm=mlm, mlm_probability=mlm_probability)
         self.max_offset = max_offset
-        self.equal_token_id = tokenizer.convert_tokens_to_ids('=')  # Token ID for '='
+        self.equal_token_id = tokenizer.convert_tokens_to_ids('=')[0]  # Token ID for '='
     
     def __call__(self, examples):
         inputs = torch.stack([example['input_ids'] for example in examples])
@@ -32,13 +32,13 @@ class DataCollatorWithUniformRandomOffsetsForCausalLM_reverse(DataCollatorForLan
         equal_token_tensor = torch.full((adjusted_inputs_tensor.size(0), 1), self.equal_token_id, dtype=torch.long)
 
         # Concatenate inputs, "=" token, and labels
-        concatenated_inputs = torch.cat([adjusted_inputs_tensor, equal_token_tensor], dim=1)
-        concatenated_labels = torch.cat([equal_token_tensor, reversed_labels_tensor], dim=1)
+        concatenated_inputs_labels = torch.cat([adjusted_inputs_tensor, equal_token_tensor, reversed_labels_tensor], dim=1)
+
 
         return {
-            "input_ids": concatenated_inputs,
-            "attention_mask": (concatenated_inputs != self.tokenizer.pad_token_id).long(),
-            "labels": concatenated_labels  # Labels are reversed inputs
+            "input_ids": concatenated_inputs_labels,
+            "attention_mask": (concatenated_inputs_labels != self.tokenizer.pad_token_id), #.long(),
+            "labels": reversed_labels_tensor  # Labels are reversed inputs
         }
 
 # # Example usage

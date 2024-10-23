@@ -1,0 +1,18 @@
+{"time":"2024-10-22T15:51:18.736121981+04:00","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-22T15:51:18.736138045+04:00","level":"INFO","msg":"created symlink","path":"wandb/run-20241022_155118-z1lqshim/logs/debug-core.log"}
+{"time":"2024-10-22T15:51:18.736176808+04:00","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-22T15:51:18.736182954+04:00","level":"INFO","msg":"created symlink","path":"wandb/run-20241022_155118-z1lqshim/logs/debug-core.log"}
+{"time":"2024-10-22T15:51:18.742367496+04:00","level":"INFO","msg":"created new stream","id":"z1lqshim"}
+{"time":"2024-10-22T15:51:18.742402836+04:00","level":"INFO","msg":"stream: started","id":"z1lqshim"}
+{"time":"2024-10-22T15:51:18.742480851+04:00","level":"INFO","msg":"sender: started","stream_id":{"value":"z1lqshim"}}
+{"time":"2024-10-22T15:51:18.742470025+04:00","level":"INFO","msg":"handler: started","stream_id":{"value":"z1lqshim"}}
+{"time":"2024-10-22T15:51:18.742476591+04:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"z1lqshim"}}
+{"time":"2024-10-22T15:51:19.532772503+04:00","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-22T15:51:19.534486733+04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-22T15:51:19.695741309+04:00","level":"INFO","msg":"stream: closing","id":"z1lqshim"}
+{"time":"2024-10-22T15:51:19.695793691+04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-22T15:51:19.695900691+04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-22T15:51:22.37615091+04:00","level":"INFO","msg":"handler: closed","stream_id":{"value":"z1lqshim"}}
+{"time":"2024-10-22T15:51:22.376214397+04:00","level":"INFO","msg":"sender: closed","stream_id":{"value":"z1lqshim"}}
+{"time":"2024-10-22T15:51:22.376205318+04:00","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"z1lqshim"}}
+{"time":"2024-10-22T15:51:22.376347519+04:00","level":"INFO","msg":"stream: closed","id":"z1lqshim"}

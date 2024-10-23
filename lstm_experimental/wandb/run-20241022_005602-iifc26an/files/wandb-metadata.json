@@ -1,0 +1,17 @@
+{
+  "os": "Linux-5.15.163-1-MANJARO-x86_64-with-glibc2.39",
+  "python": "3.12.4",
+  "startedAt": "2024-10-21T20:56:02.563874Z",
+  "program": "/home/cosmos/VScode Projects/coglab/NLP/pytorch-adaptive-computation-time/pytorch_adaptive_computation_time/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_reverse.py",
+  "codePath": "lstm_experimental/lstm_binary_reverse.py",
+  "git": {
+    "remote": "https://github.com/Skvayzer/associative-recurrent-memory-transformer",
+    "commit": "6a9f787e4eb85655f326ba1af1ccef585928a1fe"
+  },
+  "email": "MrSkvayzer@gmail.com",
+  "root": ".",
+  "host": "CoSmOS",
+  "username": "cosmos",
+  "executable": "/home/cosmos/VScode Projects/coglab/torch_env/bin/python",
+  "codePathLocal": "lstm_binary_reverse.py"
+}

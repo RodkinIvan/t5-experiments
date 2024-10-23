@@ -43,7 +43,7 @@ class BinaryReverseDataset(Dataset):
         Y = [self.token_mapping[bit] for bit in row['Y']]
 
         # Input sequence: X + '='
-        input_ids = X + [self.token_mapping['=']] + Y
+        input_ids = X #+ [self.token_mapping['=']] + Y
 
         # Labels: Y
         labels = Y
@@ -85,36 +85,46 @@ from transformers import PreTrainedTokenizer
 
 class BinaryReverseTokenizer(PreTrainedTokenizer):
     def __init__(self, token_mapping):
-        # Initialize the PreTrainedTokenizer with necessary variables
+        # Set the token mapping before calling super().__init__
         self.token_mapping = token_mapping
-        self.vocab_size = len(token_mapping)
-        self.id_to_token = {v: k for k, v in token_mapping.items()}  # Reverse mapping
+        
+        # Create reverse mapping (id -> token)
+        self.id_to_token = {v: k for k, v in token_mapping.items()}
+        
+        # Now call the parent class initializer with special tokens
 
         super().__init__(pad_token='<PAD>', eos_token='=', unk_token='<UNK>')
 
+    @property
+    def vocab_size(self):
+        # Return the length of the token mapping (vocabulary size)
+        return len(self.token_mapping)
+
     def _tokenize(self, text):
-        # Tokenize the input string by simply mapping each character to its corresponding token ID
+        # Tokenize the text (for binary, it’s just splitting into characters)
         return list(text)
 
     def convert_tokens_to_ids(self, tokens):
-        # Convert each token to its corresponding ID using the mapping
-        return [self.token_mapping.get(token, self.unk_token_id) for token in tokens]
+        # Convert tokens to IDs using the token_mapping
+        return [self.token_mapping.get(token) for token in tokens]
 
     def convert_ids_to_tokens(self, ids):
-        # Convert IDs back to tokens
+        # Convert token IDs back to tokens
         return [self.id_to_token.get(i, self.unk_token) for i in ids]
 
     def build_inputs_with_special_tokens(self, token_ids):
-        # For the binary reverse task, we concatenate input_ids with the '=' separator token
+        # Add the separator '=' token at the end of the sequence
         return token_ids + [self.token_mapping['=']]
 
     def get_vocab(self):
+        # Return the token mapping (for Hugging Face internals)
         return self.token_mapping
+
 
 
 tokenizer = BinaryReverseTokenizer(token_mapping)
 
-data_collator = DataCollatorWithUniformRandomOffsetsForCausalLM_reverse(tokenizer, mlm=False, max_offset=30)
+data_collator = DataCollatorWithUniformRandomOffsetsForCausalLM_reverse(tokenizer, mlm=False, max_offset=2)
 
 
 # DataLoader to load the binary reverse dataset
@@ -130,7 +140,7 @@ class BinaryReverseDataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         # Load data
         data = pd.read_csv(self.file_path, sep='\t')
-        full_dataset = BinaryReverseDataset(data)
+        full_dataset = BinaryReverseDataset(data, token_mapping)
 
         # Split dataset
         train_size = int(self.train_split * len(full_dataset))
@@ -174,6 +184,7 @@ def train_model_reverse(file_path):
     model = DoubleLSTMModel(
         vocab_size=vocab_size,
         embedding_dim=embedding_dim,
+        token_mapping=token_mapping,
         num_layers=num_layers,
         hidden_size=hidden_size,
         lr=learning_rate
@@ -195,4 +206,4 @@ def train_model_reverse(file_path):
 
 # Assuming the binary reverse dataset is stored at 'binary_pairs_reverse.tsv'
 if __name__ == "__main__":
-    train_model_reverse('data/binary_pairs_reverse.tsv')
+    train_model_reverse('/home/cosmos/VScode Projects/coglab/NLP/pytorch-adaptive-computation-time/pytorch_adaptive_computation_time/associative-recurrent-memory-transformer/lstm_experimental/data/binary_reverse.tsv')

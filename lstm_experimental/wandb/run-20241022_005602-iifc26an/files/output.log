@@ -1,0 +1,39 @@
+Traceback (most recent call last):
+  File "/home/cosmos/VScode Projects/coglab/NLP/pytorch-adaptive-computation-time/pytorch_adaptive_computation_time/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_reverse.py", line 207, in <module>
+    train_model_reverse('data/binary_pairs_reverse.tsv')
+  File "/home/cosmos/VScode Projects/coglab/NLP/pytorch-adaptive-computation-time/pytorch_adaptive_computation_time/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_reverse.py", line 200, in train_model_reverse
+    trainer.fit(model, data_module)
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pytorch_lightning/trainer/call.py", line 47, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 943, in _run
+    call._call_setup_hook(self)  # allow user to set up LightningModule in accelerator environment
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pytorch_lightning/trainer/call.py", line 102, in _call_setup_hook
+    _call_lightning_datamodule_hook(trainer, "setup", stage=fn)
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pytorch_lightning/trainer/call.py", line 189, in _call_lightning_datamodule_hook
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/cosmos/VScode Projects/coglab/NLP/pytorch-adaptive-computation-time/pytorch_adaptive_computation_time/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_reverse.py", line 141, in setup
+    data = pd.read_csv(self.file_path, sep='\t')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 1026, in read_csv
+    return _read(filepath_or_buffer, kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 620, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 1620, in __init__
+    self._engine = self._make_engine(f, self.engine)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 1880, in _make_engine
+    self.handles = get_handle(
+                   ^^^^^^^^^^^
+  File "/home/cosmos/VScode Projects/coglab/torch_env/lib/python3.12/site-packages/pandas/io/common.py", line 873, in get_handle
+    handle = open(
+             ^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/binary_pairs_reverse.tsv'
