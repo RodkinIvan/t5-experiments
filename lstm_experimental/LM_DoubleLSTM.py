@@ -58,7 +58,7 @@ class DoubleLSTMModel(pl.LightningModule):
         #     logits_y.append(logits[i, y_start_idx-1:y_end_idx-1, :])
         #     y_ground.append(y[i, :y_lengths[i]])
 
-        logits_y = logits[:, -label_length:, :]
+        logits_y = logits[:, -label_length-1:, :-1]
 
         logits_y_flat = torch.flatten(logits_y, end_dim=-2)  
         # Flatten the ground truth Y
@@ -114,7 +114,7 @@ class DoubleLSTMModel(pl.LightningModule):
         # y_ground = []
         
 
-        logits_y = logits[:, -label_length:, :]
+        logits_y = logits[:, -label_length:-1, :-1]
 
         # for i in range(batch_size):
         #     # Start of Y is aftor i in range(batch_size):
