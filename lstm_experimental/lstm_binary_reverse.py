@@ -206,4 +206,4 @@ def train_model_reverse(file_path):
 
 # Assuming the binary reverse dataset is stored at 'binary_pairs_reverse.tsv'
 if __name__ == "__main__":
-    train_model_reverse('/home/cosmos/VScode Projects/coglab/NLP/pytorch-adaptive-computation-time/pytorch_adaptive_computation_time/associative-recurrent-memory-transformer/lstm_experimental/data/binary_reverse.tsv')
+    train_model_reverse('./data/binary_reverse.tsv')
