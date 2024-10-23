@@ -31,7 +31,7 @@ class BinaryReverseDataset(Dataset):
             token_mapping (dict): Mapping from tokens to integers.
         """
         # Ensure that all binary numbers have a length of 40
-        self.data = data[data['X'].apply(len) == 40].reset_index(drop=True)
+        self.data = data[data['X'].apply(len) == 400].reset_index(drop=True)
         self.token_mapping = token_mapping
 
     def __len__(self):
@@ -189,6 +189,7 @@ def train_model_reverse(file_path):
         hidden_size=hidden_size,
         lr=learning_rate
     )
+    model.load_from_checkpoint('./checkpoints/best-checkpoint-val_loss=0.07.ckpt')
 
     # Setup WandB Logger
     wandb_logger = WandbLogger(project="bin_reverse_task", name="lstm_reverse_experiment")
@@ -201,7 +202,7 @@ def train_model_reverse(file_path):
     # Configure the ModelCheckpoint callback to save the best model (with the lowest val_loss)
     checkpoint_callback = ModelCheckpoint(
         dirpath='./checkpoints',  # Directory to save the checkpoint
-        filename='best-checkpoint-{val_loss:.2f}',  # Base name for the saved file
+        filename='len400-best-checkpoint-{val_loss:.2f}',  # Base name for the saved file
         save_top_k=1,  # Save only the top 1 model
         verbose=True,
         monitor='val_loss',  # Monitor validation loss
