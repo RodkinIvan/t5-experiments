@@ -171,9 +171,9 @@ class BinaryReverseDataModule(pl.LightningDataModule):
 # Train the model for the Binary Reverse Task
 def train_model_reverse(file_path):
     embedding_dim = 8
-    hidden_size = 8
+    hidden_size = 128
     batch_size = 32
-    learning_rate = 1e-4
+    learning_rate = 1e-3
     max_epochs = 100
     num_layers = 1
 
