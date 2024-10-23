@@ -189,7 +189,7 @@ def train_model_reverse(file_path):
         hidden_size=hidden_size,
         lr=learning_rate
     )
-    model.load_from_checkpoint('./checkpoints/best-checkpoint-val_loss=0.07.ckpt')
+    model = DoubleLSTMModel.load_from_checkpoint('./checkpoints/best-checkpoint-val_loss=0.07.ckpt')
 
     # Setup WandB Logger
     wandb_logger = WandbLogger(project="bin_reverse_task", name="lstm_reverse_experiment")
