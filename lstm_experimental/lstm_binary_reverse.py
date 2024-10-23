@@ -31,7 +31,7 @@ class BinaryReverseDataset(Dataset):
             token_mapping (dict): Mapping from tokens to integers.
         """
         # Ensure that all binary numbers have a length of 40
-        self.data = data[data['X'].apply(len) == 40].reset_index(drop=True)
+        self.data = data[data['X'].apply(len) == 400].reset_index(drop=True)
         self.token_mapping = token_mapping
 
     def __len__(self):
