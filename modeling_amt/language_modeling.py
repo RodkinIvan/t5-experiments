@@ -401,28 +401,28 @@ class AssociativeMemoryCell(torch.nn.Module):
 
         seg_kwargs = self.process_input(input_ids, **kwargs)
         if self.RWKV_ARMT and not self.layers[0].generate_mode:
-            # input1 = dict()
-            # input2 = dict()
-            # for item in seg_kwargs:
-            #     if isinstance(seg_kwargs[item], torch.Tensor):
-            #     # if False:
-            #         input1[item] = seg_kwargs[item][:, :-self.num_mem_tokens]
-            #         input2[item] = seg_kwargs[item][:, -self.num_mem_tokens:]
-            #     else:
-            #         input1[item] = seg_kwargs[item]
-            #         input2[item] = seg_kwargs[item]
+            input1 = dict()
+            input2 = dict()
+            for item in seg_kwargs:
+                if isinstance(seg_kwargs[item], torch.Tensor):
+                # if False:
+                    input1[item] = seg_kwargs[item][:, :-self.num_mem_tokens]
+                    input2[item] = seg_kwargs[item][:, -self.num_mem_tokens:]
+                else:
+                    input1[item] = seg_kwargs[item]
+                    input2[item] = seg_kwargs[item]
             
-            # self.generate_mode(True)
-            # out = self.model(**input1)
-            # self.generate_mode(False)
-            # state_tmp = tuple([torch.clone(state) for state in out['state']])
-            # out = Munch({k: torch.clone(t) if isinstance(t, torch.Tensor) else t for k, t in out.items()})
-            # input2['state'] = out['state']
-            # _ = self.model(**input2)
-            # out['state'] = state_tmp
+            self.generate_mode(True)
+            out = self.model(**input1)
+            self.generate_mode(False)
+            state_tmp = tuple([torch.clone(state) for state in out['state']])
+            out = Munch({k: torch.clone(t) if isinstance(t, torch.Tensor) else t for k, t in out.items()})
+            input2['state'] = out['state']
+            _ = self.model(**input2)
+            out['state'] = state_tmp
             # out['state'] = out2['state']
-            out = self.model(**seg_kwargs)
-            out['logits'] = out['logits'][:, :-self.num_mem_tokens]
+            # out = self.model(**seg_kwargs)
+            # out['logits'] = out['logits'][:, :-self.num_mem_tokens]
         else:
             out = self.model(**seg_kwargs)
 
@@ -545,6 +545,7 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
                 labels_mask = torch.cat([labels_mask[:, i] for i in range(n_segs)], dim=1)
         else:
             segmented = self.segment(input_ids=input_ids, inputs_embeds=inputs_embeds, attention_mask=attention_mask, labels=labels, labels_mask=labels_mask)
+        
         cell_outputs = []
         past_key_values = None
         num_mem_tokens = self.memory_cell.num_mem_tokens
