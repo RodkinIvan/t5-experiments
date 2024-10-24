@@ -124,7 +124,7 @@ class BinaryReverseTokenizer(PreTrainedTokenizer):
 
 tokenizer = BinaryReverseTokenizer(token_mapping)
 
-data_collator = DataCollatorWithUniformRandomOffsetsForCausalLM_reverse(tokenizer, mlm=False, max_offset=2)
+data_collator = DataCollatorWithUniformRandomOffsetsForCausalLM_reverse(tokenizer, mlm=False, max_offset=35)
 
 
 # DataLoader to load the binary reverse dataset

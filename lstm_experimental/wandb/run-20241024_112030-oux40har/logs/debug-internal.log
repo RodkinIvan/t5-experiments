@@ -1,0 +1,16 @@
+{"time":"2024-10-24T11:20:30.230082582+04:00","level":"INFO","msg":"using version","core version":"0.18.5"}
+{"time":"2024-10-24T11:20:30.230088982+04:00","level":"INFO","msg":"created symlink","path":"wandb/run-20241024_112030-oux40har/logs/debug-core.log"}
+{"time":"2024-10-24T11:20:30.334841048+04:00","level":"INFO","msg":"created new stream","id":"oux40har"}
+{"time":"2024-10-24T11:20:30.334862439+04:00","level":"INFO","msg":"stream: started","id":"oux40har"}
+{"time":"2024-10-24T11:20:30.334887419+04:00","level":"INFO","msg":"sender: started","stream_id":"oux40har"}
+{"time":"2024-10-24T11:20:30.334921809+04:00","level":"INFO","msg":"handler: started","stream_id":{"value":"oux40har"}}
+{"time":"2024-10-24T11:20:30.334874069+04:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"oux40har"}}
+{"time":"2024-10-24T11:20:30.980539045+04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-24T11:21:11.533238951+04:00","level":"INFO","msg":"stream: closing","id":"oux40har"}
+{"time":"2024-10-24T11:21:11.533272831+04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-24T11:21:11.533634864+04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-24T11:21:14.915251469+04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-10-24T11:21:15.81942971+04:00","level":"INFO","msg":"handler: closed","stream_id":{"value":"oux40har"}}
+{"time":"2024-10-24T11:21:15.81946094+04:00","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"oux40har"}}
+{"time":"2024-10-24T11:21:15.81948372+04:00","level":"INFO","msg":"sender: closed","stream_id":"oux40har"}
+{"time":"2024-10-24T11:21:15.822318082+04:00","level":"INFO","msg":"stream: closed","id":"oux40har"}

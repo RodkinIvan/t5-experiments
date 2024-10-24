@@ -1,0 +1,12 @@
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'test_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+Testing DataLoader 0: 100%|███████████████████████████████████████████████████████████████████████████████████████████| 391/391 [00:35<00:00, 11.12it/s]
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/utilities/data.py:78: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 256. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/utilities/data.py:78: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 160. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃[1m [0m[1m       Test metric       [0m[1m [0m┃[1m [0m[1m      DataLoader 0       [0m[1m [0m┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│[36m [0m[36m        val_loss         [0m[36m [0m│[35m [0m[35m   3.7672502994537354    [0m[35m [0m│
+│[36m [0m[36m       val_seq_acc       [0m[36m [0m│[35m [0m[35m           0.0           [0m[35m [0m│
+│[36m [0m[36m      val_token_acc      [0m[36m [0m│[35m [0m[35m   0.5000659823417664    [0m[35m [0m│
+└───────────────────────────┴───────────────────────────┘

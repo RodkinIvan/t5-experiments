@@ -1,0 +1,8 @@
+{"time":"2024-10-24T16:37:26.860160369+04:00","level":"INFO","msg":"using version","core version":"0.18.5"}
+{"time":"2024-10-24T16:37:26.86017026+04:00","level":"INFO","msg":"created symlink","path":"wandb/run-20241024_163726-329okowy/logs/debug-core.log"}
+{"time":"2024-10-24T16:37:26.971343732+04:00","level":"INFO","msg":"created new stream","id":"329okowy"}
+{"time":"2024-10-24T16:37:26.97138025+04:00","level":"INFO","msg":"stream: started","id":"329okowy"}
+{"time":"2024-10-24T16:37:26.971410497+04:00","level":"INFO","msg":"sender: started","stream_id":"329okowy"}
+{"time":"2024-10-24T16:37:26.971398335+04:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"329okowy"}}
+{"time":"2024-10-24T16:37:26.971405393+04:00","level":"INFO","msg":"handler: started","stream_id":{"value":"329okowy"}}
+{"time":"2024-10-24T16:37:27.695313458+04:00","level":"INFO","msg":"Starting system monitor"}

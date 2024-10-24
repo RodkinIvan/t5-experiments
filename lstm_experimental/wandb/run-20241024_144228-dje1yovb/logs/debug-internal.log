@@ -1,0 +1,16 @@
+{"time":"2024-10-24T14:42:28.679432216+04:00","level":"INFO","msg":"using version","core version":"0.18.5"}
+{"time":"2024-10-24T14:42:28.679448621+04:00","level":"INFO","msg":"created symlink","path":"wandb/run-20241024_144228-dje1yovb/logs/debug-core.log"}
+{"time":"2024-10-24T14:42:28.943204456+04:00","level":"INFO","msg":"created new stream","id":"dje1yovb"}
+{"time":"2024-10-24T14:42:28.943268752+04:00","level":"INFO","msg":"stream: started","id":"dje1yovb"}
+{"time":"2024-10-24T14:42:28.943322555+04:00","level":"INFO","msg":"handler: started","stream_id":{"value":"dje1yovb"}}
+{"time":"2024-10-24T14:42:28.959013682+04:00","level":"INFO","msg":"sender: started","stream_id":"dje1yovb"}
+{"time":"2024-10-24T14:42:28.958992554+04:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"dje1yovb"}}
+{"time":"2024-10-24T14:42:29.623547962+04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-24T14:42:35.518763902+04:00","level":"INFO","msg":"stream: closing","id":"dje1yovb"}
+{"time":"2024-10-24T14:42:35.518812053+04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-24T14:42:35.519415674+04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-24T14:42:38.531907473+04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-10-24T14:42:38.875390365+04:00","level":"INFO","msg":"handler: closed","stream_id":{"value":"dje1yovb"}}
+{"time":"2024-10-24T14:42:38.875452891+04:00","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"dje1yovb"}}
+{"time":"2024-10-24T14:42:38.875484707+04:00","level":"INFO","msg":"sender: closed","stream_id":"dje1yovb"}
+{"time":"2024-10-24T14:42:38.876465131+04:00","level":"INFO","msg":"stream: closed","id":"dje1yovb"}

@@ -1,0 +1,16 @@
+{"time":"2024-10-24T15:47:05.070677226+04:00","level":"INFO","msg":"using version","core version":"0.18.5"}
+{"time":"2024-10-24T15:47:05.070688343+04:00","level":"INFO","msg":"created symlink","path":"wandb/run-20241024_154705-glx9y8on/logs/debug-core.log"}
+{"time":"2024-10-24T15:47:05.179323688+04:00","level":"INFO","msg":"created new stream","id":"glx9y8on"}
+{"time":"2024-10-24T15:47:05.179389828+04:00","level":"INFO","msg":"stream: started","id":"glx9y8on"}
+{"time":"2024-10-24T15:47:05.179457479+04:00","level":"INFO","msg":"sender: started","stream_id":"glx9y8on"}
+{"time":"2024-10-24T15:47:05.179442227+04:00","level":"INFO","msg":"handler: started","stream_id":{"value":"glx9y8on"}}
+{"time":"2024-10-24T15:47:05.179436743+04:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"glx9y8on"}}
+{"time":"2024-10-24T15:47:07.142210533+04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-24T15:47:07.648807276+04:00","level":"INFO","msg":"stream: closing","id":"glx9y8on"}
+{"time":"2024-10-24T15:47:07.648865024+04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-24T15:47:07.649336982+04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-24T15:47:09.917047973+04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-10-24T15:47:10.228129559+04:00","level":"INFO","msg":"handler: closed","stream_id":{"value":"glx9y8on"}}
+{"time":"2024-10-24T15:47:10.228159435+04:00","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"glx9y8on"}}
+{"time":"2024-10-24T15:47:10.228182045+04:00","level":"INFO","msg":"sender: closed","stream_id":"glx9y8on"}
+{"time":"2024-10-24T15:47:10.229053637+04:00","level":"INFO","msg":"stream: closed","id":"glx9y8on"}

@@ -10,11 +10,12 @@ class DataCollatorWithUniformRandomOffsetsForCausalLM_copy(DataCollatorForLangua
     def __init__(self, tokenizer, mlm=False, mlm_probability=0.15, max_offset=30):
         super().__init__(tokenizer, mlm=mlm, mlm_probability=mlm_probability)
         self.max_offset = max_offset
-        self.equal_token_id = tokenizer.convert_tokens_to_ids('=')  # Token ID for '='
+        self.equal_token_id = tokenizer.convert_tokens_to_ids('=')[0]  # Token ID for '='
     
     def __call__(self, examples):
+        # print(examples)
         inputs = torch.stack([example['input_ids'] for example in examples])
-        labels = torch.stack([example['labels'] for example in examples])
+        labels = torch.stack([example['input_ids'] for example in examples])
         
         # Generate a uniform random offset to apply across the batch
         offset = random.randint(-self.max_offset, self.max_offset)
@@ -45,8 +46,8 @@ class DataCollatorWithUniformRandomOffsetsForCausalLM_copy(DataCollatorForLangua
         #print(concatenated_inputs_labels)
         return {
             "input_ids": concatenated_inputs_labels,
-            "attention_mask": (concatenated_inputs_labels != self.tokenizer.pad_token_id).long(),
-            "labels": concatenated_inputs_labels.clone()  # Copy for labels as usual in causal LM
+            "attention_mask": (concatenated_inputs_labels != self.tokenizer.pad_token_id), #.long(),
+            "labels": adjusted_labels_tensor
         }
               
 # data_collator = DataCollatorWithUniformRandomOffsetsForCausalLM_copy(tokenizer, mlm=False, max_offset=30)

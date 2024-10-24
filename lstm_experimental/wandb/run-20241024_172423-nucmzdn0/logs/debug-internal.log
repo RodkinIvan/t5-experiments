@@ -1,0 +1,16 @@
+{"time":"2024-10-24T17:24:23.825652406+04:00","level":"INFO","msg":"using version","core version":"0.18.5"}
+{"time":"2024-10-24T17:24:23.825661806+04:00","level":"INFO","msg":"created symlink","path":"wandb/run-20241024_172423-nucmzdn0/logs/debug-core.log"}
+{"time":"2024-10-24T17:24:23.930939922+04:00","level":"INFO","msg":"created new stream","id":"nucmzdn0"}
+{"time":"2024-10-24T17:24:23.930968892+04:00","level":"INFO","msg":"stream: started","id":"nucmzdn0"}
+{"time":"2024-10-24T17:24:23.931003242+04:00","level":"INFO","msg":"sender: started","stream_id":"nucmzdn0"}
+{"time":"2024-10-24T17:24:23.930994332+04:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"nucmzdn0"}}
+{"time":"2024-10-24T17:24:23.931018232+04:00","level":"INFO","msg":"handler: started","stream_id":{"value":"nucmzdn0"}}
+{"time":"2024-10-24T17:24:24.625621009+04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-24T17:26:02.700225445+04:00","level":"INFO","msg":"stream: closing","id":"nucmzdn0"}
+{"time":"2024-10-24T17:26:02.700267165+04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-24T17:26:02.700673317+04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-24T17:26:05.811278135+04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-10-24T17:26:07.564739105+04:00","level":"INFO","msg":"handler: closed","stream_id":{"value":"nucmzdn0"}}
+{"time":"2024-10-24T17:26:07.564768485+04:00","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"nucmzdn0"}}
+{"time":"2024-10-24T17:26:07.564802225+04:00","level":"INFO","msg":"sender: closed","stream_id":"nucmzdn0"}
+{"time":"2024-10-24T17:26:07.565748939+04:00","level":"INFO","msg":"stream: closed","id":"nucmzdn0"}

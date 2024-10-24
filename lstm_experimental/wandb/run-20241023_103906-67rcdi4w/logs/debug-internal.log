@@ -1,0 +1,16 @@
+{"time":"2024-10-23T10:39:06.824999107+04:00","level":"INFO","msg":"using version","core version":"0.18.5"}
+{"time":"2024-10-23T10:39:06.825016428+04:00","level":"INFO","msg":"created symlink","path":"wandb/run-20241023_103906-67rcdi4w/logs/debug-core.log"}
+{"time":"2024-10-23T10:39:06.929450817+04:00","level":"INFO","msg":"created new stream","id":"67rcdi4w"}
+{"time":"2024-10-23T10:39:06.929473747+04:00","level":"INFO","msg":"stream: started","id":"67rcdi4w"}
+{"time":"2024-10-23T10:39:06.929542748+04:00","level":"INFO","msg":"sender: started","stream_id":"67rcdi4w"}
+{"time":"2024-10-23T10:39:06.929482327+04:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"67rcdi4w"}}
+{"time":"2024-10-23T10:39:06.929518377+04:00","level":"INFO","msg":"handler: started","stream_id":{"value":"67rcdi4w"}}
+{"time":"2024-10-23T10:39:07.578038431+04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-23T10:41:53.76401212+04:00","level":"INFO","msg":"stream: closing","id":"67rcdi4w"}
+{"time":"2024-10-23T10:41:53.76404639+04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-23T10:41:53.764407211+04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-23T10:41:56.796124517+04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-10-23T10:41:57.369113741+04:00","level":"INFO","msg":"sender: closed","stream_id":"67rcdi4w"}
+{"time":"2024-10-23T10:41:57.368971181+04:00","level":"INFO","msg":"handler: closed","stream_id":{"value":"67rcdi4w"}}
+{"time":"2024-10-23T10:41:57.369100511+04:00","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"67rcdi4w"}}
+{"time":"2024-10-23T10:41:57.382167307+04:00","level":"INFO","msg":"stream: closed","id":"67rcdi4w"}

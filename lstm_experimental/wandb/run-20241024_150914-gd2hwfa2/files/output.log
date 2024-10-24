@@ -1,0 +1,102 @@
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:654: Checkpoint directory /home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/binary_copy exists and is not empty.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name       | Type             | Params | Mode
+--------------------------------------------------------
+0 | embedding  | Embedding        | 32     | train
+1 | lstm1      | LSTM             | 70.7 K | train
+2 | activation | ReLU             | 0      | train
+3 | lstm2      | LSTM             | 132 K  | train
+4 | lstm3      | LSTM             | 132 K  | train
+5 | lstm4      | LSTM             | 132 K  | train
+6 | fc         | Linear           | 516    | train
+7 | loss_fn    | CrossEntropyLoss | 0      | train
+--------------------------------------------------------
+467 K     Trainable params
+0         Non-trainable params
+467 K     Total params
+1.870     Total estimated model params size (MB)
+8         Modules in train mode
+0         Modules in eval mode
+Sanity Checking: |                                                                                                                | 0/? [00:00<?, ?it/s][{'X': '0000000001001111100010010100101000000000', 'Y': '0000000001001111100010010100101000000000'}, {'X': '1111010100101101000100001110110110100100', 'Y': '1111010100101101000100001110110110100100'}, {'X': '0001111000110111010110101110111011000101', 'Y': '0001111000110111010110101110111011000101'}, {'X': '0001011100010110010111011010011111011111', 'Y': '0001011100010110010111011010011111011111'}, {'X': '0111111000010100010101100011000101111010', 'Y': '0111111000010100010101100011000101111010'}, {'X': '0101001001100100001010000001011011000010', 'Y': '0101001001100100001010000001011011000010'}, {'X': '0110011100000001010110011111110101110100', 'Y': '0110011100000001010110011111110101110100'}, {'X': '1011101100011101101111111011011100101101', 'Y': '1011101100011101101111111011011100101101'}, {'X': '0001100110010010101001100000000101001100', 'Y': '0001100110010010101001100000000101001100'}, {'X': '0010101111010100101001000010001100011101', 'Y': '0010101111010100101001000010001100011101'}, {'X': '1011100100111101101111111001011100011000', 'Y': '1011100100111101101111111001011100011000'}, {'X': '0111100100100110011011101000000111010101', 'Y': '0111100100100110011011101000000111010101'}, {'X': '0110000011110101100110011000101011101111', 'Y': '0110000011110101100110011000101011101111'}, {'X': '0111010100010010000100010000101110000101', 'Y': '0111010100010010000100010000101110000101'}, {'X': '0010000001110000011101100001101011011001', 'Y': '0010000001110000011101100001101011011001'}, {'X': '1011001110100111100101010111000100101111', 'Y': '1011001110100111100101010111000100101111'}, {'X': '0101010101000100011110011011001000011100', 'Y': '0101010101000100011110011011001000011100'}, {'X': '0101000110100110110010011010101111110011', 'Y': '0101000110100110110010011010101111110011'}, {'X': '1011110101010110011011110110011111001000', 'Y': '1011110101010110011011110110011111001000'}, {'X': '0010010100110110101000000011000100010001', 'Y': '0010010100110110101000000011000100010001'}, {'X': '1001110111101010100110101010101111110010', 'Y': '1001110111101010100110101010101111110010'}, {'X': '0001110100011110111001111101000001001001', 'Y': '0001110100011110111001111101000001001001'}, {'X': '1101101001010110111011000011010110010100', 'Y': '1101101001010110111011000011010110010100'}, {'X': '0010100100000101101010001010010010101101', 'Y': '0010100100000101101010001010010010101101'}, {'X': '0010011011001011111001000001000110001011', 'Y': '0010011011001011111001000001000110001011'}, {'X': '1001000111111001110111000100001010101110', 'Y': '1001000111111001110111000100001010101110'}, {'X': '1011011110101000111001010100010001000001', 'Y': '1011011110101000111001010100010001000001'}, {'X': '1001111110000101010010100001010000000110', 'Y': '1001111110000101010010100001010000000110'}, {'X': '0000110100111100110010101001111101111001', 'Y': '0000110100111100110010101001111101111001'}, {'X': '0100101000100111100111001111000101010110', 'Y': '0100101000100111100111001111000101010110'}, {'X': '0110001001011100000000100110100010001101', 'Y': '0110001001011100000000100110100010001101'}, {'X': '0011010111100101111111110110110000000000', 'Y': '0011010111100101111111110110110000000000'}]
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+Traceback (most recent call last):
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 242, in <module>
+    train_model_Copy('./data/binary_reverse.tsv')
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 235, in train_model_Copy
+    trainer.fit(model, data_module)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 47, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1023, in _run_stage
+    self._run_sanity_check()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1052, in _run_sanity_check
+    val_loop.run()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 128, in run
+    batch, batch_idx, dataloader_idx = next(data_fetcher)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/fetchers.py", line 133, in __next__
+    batch = super().__next__()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/fetchers.py", line 60, in __next__
+    batch = next(self.iterator)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/utilities/combined_loader.py", line 341, in __next__
+    out = next(self._iterator)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/utilities/combined_loader.py", line 142, in __next__
+    out = next(self.iterators[0])
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 630, in __next__
+    data = self._next_data()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 673, in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/utils/data/_utils/fetch.py", line 55, in fetch
+    return self.collate_fn(data)
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/processing/copy_collator.py", line 17, in __call__
+    inputs = torch.stack([example['input_ids'] for example in examples])
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/processing/copy_collator.py", line 17, in <listcomp>
+    inputs = torch.stack([example['input_ids'] for example in examples])
+KeyError: 'input_ids'
+Traceback (most recent call last):
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 242, in <module>
+    train_model_Copy('./data/binary_reverse.tsv')
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 235, in train_model_Copy
+    trainer.fit(model, data_module)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 47, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1023, in _run_stage
+    self._run_sanity_check()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1052, in _run_sanity_check
+    val_loop.run()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 128, in run
+    batch, batch_idx, dataloader_idx = next(data_fetcher)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/fetchers.py", line 133, in __next__
+    batch = super().__next__()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/fetchers.py", line 60, in __next__
+    batch = next(self.iterator)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/utilities/combined_loader.py", line 341, in __next__
+    out = next(self._iterator)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/utilities/combined_loader.py", line 142, in __next__
+    out = next(self.iterators[0])
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 630, in __next__
+    data = self._next_data()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 673, in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/utils/data/_utils/fetch.py", line 55, in fetch
+    return self.collate_fn(data)
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/processing/copy_collator.py", line 17, in __call__
+    inputs = torch.stack([example['input_ids'] for example in examples])
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/processing/copy_collator.py", line 17, in <listcomp>
+    inputs = torch.stack([example['input_ids'] for example in examples])
+KeyError: 'input_ids'

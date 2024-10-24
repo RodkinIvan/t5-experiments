@@ -1,0 +1,59 @@
+_wandb:
+    value:
+        cli_version: 0.18.5
+        m:
+            - "1": trainer/global_step
+              "6":
+                - 3
+              "7": []
+        python_version: 3.9.20
+        t:
+            "1":
+                - 1
+                - 5
+                - 9
+                - 11
+                - 49
+                - 53
+                - 55
+                - 71
+                - 103
+            "2":
+                - 1
+                - 5
+                - 9
+                - 11
+                - 49
+                - 53
+                - 55
+                - 71
+                - 103
+            "3":
+                - 7
+                - 13
+                - 23
+                - 55
+                - 66
+            "4": 3.9.20
+            "5": 0.18.5
+            "6": 4.45.2
+            "8":
+                - 5
+            "12": 0.18.5
+            "13": linux-x86_64
+embedding_dim:
+    value: 8
+hidden_size:
+    value: 8
+lr:
+    value: 0.0001
+num_layers:
+    value: 1
+token_mapping:
+    value:
+        <PAD>: 3
+        =: 2
+        "0": 0
+        "1": 1
+vocab_size:
+    value: 4

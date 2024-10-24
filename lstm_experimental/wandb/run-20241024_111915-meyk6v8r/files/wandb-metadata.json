@@ -1,0 +1,97 @@
+{
+  "os":  "Linux-5.15.133-ql-generic-13.0-9-x86_64-with-glibc2.35",
+  "python":  "3.9.20",
+  "startedAt":  "2024-10-24T07:19:15.311991Z",
+  "program":  "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py",
+  "codePath":  "lstm_experimental/lstm_binary_copy.py",
+  "git":  {
+    "remote":  "https://github.com/Skvayzer/associative-recurrent-memory-transformer",
+    "commit":  "d875f054a4374f470ba7a0d670a38dc23034cf42"
+  },
+  "email":  "MrSkvayzer@gmail.com",
+  "root":  ".",
+  "host":  "ws-l6-003",
+  "username":  "konstantin.smirnov",
+  "executable":  "/home/konstantin.smirnov/miniconda3/envs/project_env/bin/python3",
+  "codePathLocal":  "lstm_binary_copy.py",
+  "cpu_count":  16,
+  "cpu_count_logical":  32,
+  "gpu":  "NVIDIA GeForce RTX 4090",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "1073741824",
+      "used":  "45056000"
+    }
+  },
+  "memory":  {
+    "total":  "67272392704"
+  },
+  "cpu":  {
+    "count":  16,
+    "countLogical":  32
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA GeForce RTX 4090",
+      "memoryTotal":  "25757220864",
+      "cudaCores":  16384,
+      "architecture":  "Ada"
+    }
+  ],
+  "slurm":  {
+    "cluster_name":  "zap",
+    "conf":  "/etc/qlustar/common/slurm-llnl/slurm.conf",
+    "cpu_bind":  "quiet,mask_cpu:0xFC00FC00",
+    "cpu_bind_list":  "0xFC00FC00",
+    "cpu_bind_type":  "mask_cpu:",
+    "cpu_bind_verbose":  "quiet",
+    "cpus_on_node":  "12",
+    "gtids":  "0",
+    "job_account":  "students",
+    "job_cpus_per_node":  "12",
+    "job_end_time":  "1729840136",
+    "job_gid":  "2002",
+    "job_id":  "45868",
+    "job_name":  "interactive",
+    "job_nodelist":  "ws-l6-003",
+    "job_num_nodes":  "1",
+    "job_partition":  "ws-ia",
+    "job_qos":  "normal",
+    "job_start_time":  "1729753736",
+    "job_uid":  "2997",
+    "job_user":  "konstantin.smirnov",
+    "jobid":  "45868",
+    "launch_node_ipaddr":  "10.127.78.115",
+    "localid":  "0",
+    "nnodes":  "1",
+    "nodeid":  "0",
+    "nodelist":  "ws-l6-003",
+    "nprocs":  "12",
+    "ntasks":  "12",
+    "prio_process":  "0",
+    "procid":  "0",
+    "pty_port":  "39467",
+    "pty_win_col":  "145",
+    "pty_win_row":  "23",
+    "script_context":  "prolog_task",
+    "srun_comm_host":  "10.127.78.115",
+    "srun_comm_port":  "34743",
+    "step_id":  "0",
+    "step_launcher_port":  "34743",
+    "step_nodelist":  "ws-l6-003",
+    "step_num_nodes":  "1",
+    "step_num_tasks":  "1",
+    "step_tasks_per_node":  "1",
+    "stepid":  "0",
+    "submit_dir":  "/home/konstantin.smirnov",
+    "submit_host":  "zap-fe-2",
+    "task_pid":  "189539",
+    "tasks_per_node":  "12",
+    "topology_addr":  "ws-l6-003",
+    "topology_addr_pattern":  "node",
+    "umask":  "0022",
+    "working_cluster":  "zap:zap:6817:9984:109"
+  },
+  "cudaVersion":  "12.2"
+}

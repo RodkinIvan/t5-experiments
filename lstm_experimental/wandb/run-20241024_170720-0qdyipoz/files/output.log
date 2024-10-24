@@ -1,0 +1,91 @@
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:654: Checkpoint directory /home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/binary_copy exists and is not empty.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name       | Type             | Params | Mode
+--------------------------------------------------------
+0 | embedding  | Embedding        | 32     | train
+1 | lstm1      | LSTM             | 70.7 K | train
+2 | activation | ReLU             | 0      | train
+3 | lstm2      | LSTM             | 132 K  | train
+4 | lstm3      | LSTM             | 132 K  | train
+5 | lstm4      | LSTM             | 132 K  | train
+6 | fc         | Linear           | 516    | train
+7 | loss_fn    | CrossEntropyLoss | 0      | train
+--------------------------------------------------------
+467 K     Trainable params
+0         Non-trainable params
+467 K     Total params
+1.870     Total estimated model params size (MB)
+8         Modules in train mode
+0         Modules in eval mode
+                                                                                                                                                        
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/utilities/data.py:105: Total length of `DataLoader` across ranks is zero. Please make sure this was your intention.
+Traceback (most recent call last):
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 225, in <module>
+    train_model_Copy('./data/binary_reverse.tsv')
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 218, in train_model_Copy
+    trainer.fit(model, data_module)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 47, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1025, in _run_stage
+    self.fit_loop.run()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/fit_loop.py", line 197, in run
+    self.setup_data()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/fit_loop.py", line 225, in setup_data
+    train_dataloader = _request_dataloader(source)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/data_connector.py", line 325, in _request_dataloader
+    return data_source.dataloader()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/data_connector.py", line 292, in dataloader
+    return call._call_lightning_datamodule_hook(self.instance.trainer, self.name)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 189, in _call_lightning_datamodule_hook
+    return fn(*args, **kwargs)
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 147, in train_dataloader
+    return DataLoader(
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/lightning_fabric/utilities/data.py", line 324, in wrapper
+    init(obj, *args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 351, in __init__
+    sampler = RandomSampler(dataset, generator=generator)  # type: ignore[arg-type]
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/utils/data/sampler.py", line 144, in __init__
+    raise ValueError(f"num_samples should be a positive integer value, but got num_samples={self.num_samples}")
+ValueError: num_samples should be a positive integer value, but got num_samples=0
+Traceback (most recent call last):
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 225, in <module>
+    train_model_Copy('./data/binary_reverse.tsv')
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 218, in train_model_Copy
+    trainer.fit(model, data_module)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 47, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1025, in _run_stage
+    self.fit_loop.run()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/fit_loop.py", line 197, in run
+    self.setup_data()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/fit_loop.py", line 225, in setup_data
+    train_dataloader = _request_dataloader(source)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/data_connector.py", line 325, in _request_dataloader
+    return data_source.dataloader()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/data_connector.py", line 292, in dataloader
+    return call._call_lightning_datamodule_hook(self.instance.trainer, self.name)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 189, in _call_lightning_datamodule_hook
+    return fn(*args, **kwargs)
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 147, in train_dataloader
+    return DataLoader(
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/lightning_fabric/utilities/data.py", line 324, in wrapper
+    init(obj, *args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 351, in __init__
+    sampler = RandomSampler(dataset, generator=generator)  # type: ignore[arg-type]
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/utils/data/sampler.py", line 144, in __init__
+    raise ValueError(f"num_samples should be a positive integer value, but got num_samples={self.num_samples}")
+ValueError: num_samples should be a positive integer value, but got num_samples=0

@@ -1,0 +1,97 @@
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name       | Type             | Params | Mode
+--------------------------------------------------------
+0 | embedding  | Embedding        | 32     | train
+1 | lstm1      | LSTM             | 70.7 K | train
+2 | activation | ReLU             | 0      | train
+3 | lstm2      | LSTM             | 132 K  | train
+4 | lstm3      | LSTM             | 132 K  | train
+5 | lstm4      | LSTM             | 132 K  | train
+6 | fc         | Linear           | 516    | train
+7 | loss_fn    | CrossEntropyLoss | 0      | train
+--------------------------------------------------------
+467 K     Trainable params
+0         Non-trainable params
+467 K     Total params
+1.870     Total estimated model params size (MB)
+8         Modules in train mode
+0         Modules in eval mode
+Sanity Checking DataLoader 0:   0%|                                                                                        | 0/2 [00:00<?, ?it/s]
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+Traceback (most recent call last):
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 222, in <module>
+    train_model_Copy('./data/binary_reverse.tsv')
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 215, in train_model_Copy
+    trainer.fit(model, data_module)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 47, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1023, in _run_stage
+    self._run_sanity_check()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1052, in _run_sanity_check
+    val_loop.run()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/LM_DoubleLSTM.py", line 156, in validation_step
+    loss = self.loss_fn(logits_y_flat, y_flat)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/nn/modules/loss.py", line 1188, in forward
+    return F.cross_entropy(input, target, weight=self.weight,
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/nn/functional.py", line 3104, in cross_entropy
+    return torch._C._nn.cross_entropy_loss(input, target, weight, _Reduction.get_enum(reduction), ignore_index, label_smoothing)
+ValueError: Expected input batch_size (1856) to match target batch_size (1888).
+Traceback (most recent call last):
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 222, in <module>
+    train_model_Copy('./data/binary_reverse.tsv')
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/lstm_binary_copy.py", line 215, in train_model_Copy
+    trainer.fit(model, data_module)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 47, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1023, in _run_stage
+    self._run_sanity_check()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1052, in _run_sanity_check
+    val_loop.run()
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/LM_DoubleLSTM.py", line 156, in validation_step
+    loss = self.loss_fn(logits_y_flat, y_flat)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/nn/modules/loss.py", line 1188, in forward
+    return F.cross_entropy(input, target, weight=self.weight,
+  File "/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/torch/nn/functional.py", line 3104, in cross_entropy
+    return torch._C._nn.cross_entropy_loss(input, target, weight, _Reduction.get_enum(reduction), ignore_index, label_smoothing)
+ValueError: Expected input batch_size (1856) to match target batch_size (1888).

@@ -1,0 +1,125 @@
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:654: Checkpoint directory /home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints exists and is not empty.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name       | Type             | Params | Mode
+--------------------------------------------------------
+0 | embedding  | Embedding        | 32     | train
+1 | lstm1      | LSTM             | 70.7 K | train
+2 | activation | ReLU             | 0      | train
+3 | lstm2      | LSTM             | 132 K  | train
+4 | fc         | Linear           | 516    | train
+5 | loss_fn    | CrossEntropyLoss | 0      | train
+--------------------------------------------------------
+203 K     Trainable params
+0         Non-trainable params
+203 K     Total params
+0.813     Total estimated model params size (MB)
+6         Modules in train mode
+0         Modules in eval mode
+Epoch 26: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [00:00<00:00, 69.69it/s, v_num=n84y]
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/utilities/data.py:78: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 32. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+                                                                                                                                                                                            
+/home/konstantin.smirnov/miniconda3/envs/project_env/lib/python3.9/site-packages/pytorch_lightning/utilities/data.py:78: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 8. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+Epoch 0, global step 50: 'val_loss' reached 0.68330 (best 0.68330), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.68.ckpt' as top 1
+Epoch 1, global step 100: 'val_loss' reached 0.67888 (best 0.67888), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.68.ckpt' as top 1
+Epoch 2, global step 150: 'val_loss' reached 0.67535 (best 0.67535), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.68.ckpt' as top 1
+Epoch 3, global step 200: 'val_loss' reached 0.67243 (best 0.67243), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.67.ckpt' as top 1
+Epoch 4, global step 250: 'val_loss' reached 0.67074 (best 0.67074), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.67.ckpt' as top 1
+Epoch 5, global step 300: 'val_loss' reached 0.66798 (best 0.66798), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.67.ckpt' as top 1
+Epoch 6, global step 350: 'val_loss' reached 0.66607 (best 0.66607), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.67.ckpt' as top 1
+Epoch 7, global step 400: 'val_loss' reached 0.66566 (best 0.66566), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.67.ckpt' as top 1
+Epoch 8, global step 450: 'val_loss' reached 0.66331 (best 0.66331), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.66.ckpt' as top 1
+Epoch 9, global step 500: 'val_loss' reached 0.66211 (best 0.66211), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.66.ckpt' as top 1
+Epoch 10, global step 550: 'val_loss' was not in top 1
+Epoch 11, global step 600: 'val_loss' reached 0.66119 (best 0.66119), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.66.ckpt' as top 1
+Epoch 12, global step 650: 'val_loss' reached 0.65831 (best 0.65831), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.66.ckpt' as top 1
+Epoch 13, global step 700: 'val_loss' was not in top 1
+Epoch 14, global step 750: 'val_loss' was not in top 1
+Epoch 15, global step 800: 'val_loss' was not in top 1
+Epoch 16, global step 850: 'val_loss' reached 0.65557 (best 0.65557), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.66.ckpt' as top 1
+Epoch 17, global step 900: 'val_loss' was not in top 1
+Epoch 18, global step 950: 'val_loss' was not in top 1
+Epoch 19, global step 1000: 'val_loss' was not in top 1
+Epoch 20, global step 1050: 'val_loss' reached 0.65529 (best 0.65529), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.66.ckpt' as top 1
+Epoch 21, global step 1100: 'val_loss' reached 0.65315 (best 0.65315), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.65.ckpt' as top 1
+Epoch 22, global step 1150: 'val_loss' was not in top 1
+Epoch 23, global step 1200: 'val_loss' was not in top 1
+Epoch 24, global step 1250: 'val_loss' was not in top 1
+Epoch 25, global step 1300: 'val_loss' reached 0.65265 (best 0.65265), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.65.ckpt' as top 1
+Epoch 26, global step 1350: 'val_loss' reached 0.65138 (best 0.65138), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.65.ckpt' as top 1
+Epoch 27, global step 1400: 'val_loss' was not in top 1
+Epoch 28, global step 1450: 'val_loss' reached 0.65067 (best 0.65067), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.65.ckpt' as top 1
+Epoch 29, global step 1500: 'val_loss' was not in top 1
+Epoch 30, global step 1550: 'val_loss' was not in top 1
+Epoch 31, global step 1600: 'val_loss' reached 0.64959 (best 0.64959), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.65.ckpt' as top 1
+Epoch 32, global step 1650: 'val_loss' was not in top 1
+Epoch 33, global step 1700: 'val_loss' was not in top 1
+Epoch 34, global step 1750: 'val_loss' reached 0.64792 (best 0.64792), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.65.ckpt' as top 1
+Epoch 35, global step 1800: 'val_loss' was not in top 1
+Epoch 36, global step 1850: 'val_loss' reached 0.64761 (best 0.64761), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.65.ckpt' as top 1
+Epoch 37, global step 1900: 'val_loss' was not in top 1
+Epoch 38, global step 1950: 'val_loss' reached 0.64533 (best 0.64533), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.65.ckpt' as top 1
+Epoch 39, global step 2000: 'val_loss' was not in top 1
+Epoch 40, global step 2050: 'val_loss' was not in top 1
+Epoch 41, global step 2100: 'val_loss' was not in top 1
+Epoch 42, global step 2150: 'val_loss' was not in top 1
+Epoch 43, global step 2200: 'val_loss' was not in top 1
+Epoch 44, global step 2250: 'val_loss' was not in top 1
+Epoch 45, global step 2300: 'val_loss' reached 0.64267 (best 0.64267), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.64.ckpt' as top 1
+Epoch 46, global step 2350: 'val_loss' was not in top 1
+Epoch 47, global step 2400: 'val_loss' was not in top 1
+Epoch 48, global step 2450: 'val_loss' was not in top 1
+Epoch 49, global step 2500: 'val_loss' was not in top 1
+Epoch 50, global step 2550: 'val_loss' was not in top 1
+Epoch 51, global step 2600: 'val_loss' reached 0.64148 (best 0.64148), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.64.ckpt' as top 1
+Epoch 52, global step 2650: 'val_loss' reached 0.64069 (best 0.64069), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.64.ckpt' as top 1
+Epoch 53, global step 2700: 'val_loss' was not in top 1
+Epoch 54, global step 2750: 'val_loss' reached 0.64068 (best 0.64068), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.64.ckpt' as top 1
+Epoch 55, global step 2800: 'val_loss' reached 0.63867 (best 0.63867), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.64.ckpt' as top 1
+Epoch 56, global step 2850: 'val_loss' was not in top 1
+Epoch 57, global step 2900: 'val_loss' was not in top 1
+Epoch 58, global step 2950: 'val_loss' was not in top 1
+Epoch 59, global step 3000: 'val_loss' was not in top 1
+Epoch 60, global step 3050: 'val_loss' was not in top 1
+Epoch 61, global step 3100: 'val_loss' was not in top 1
+Epoch 62, global step 3150: 'val_loss' was not in top 1
+Epoch 63, global step 3200: 'val_loss' was not in top 1
+Epoch 64, global step 3250: 'val_loss' reached 0.63599 (best 0.63599), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.64.ckpt' as top 1
+Epoch 65, global step 3300: 'val_loss' was not in top 1
+Epoch 66, global step 3350: 'val_loss' was not in top 1
+Epoch 67, global step 3400: 'val_loss' was not in top 1
+Epoch 68, global step 3450: 'val_loss' was not in top 1
+Epoch 69, global step 3500: 'val_loss' was not in top 1
+Epoch 70, global step 3550: 'val_loss' reached 0.63493 (best 0.63493), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.63.ckpt' as top 1
+Epoch 71, global step 3600: 'val_loss' reached 0.63399 (best 0.63399), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.63.ckpt' as top 1
+Epoch 72, global step 3650: 'val_loss' was not in top 1
+Epoch 73, global step 3700: 'val_loss' was not in top 1
+Epoch 74, global step 3750: 'val_loss' was not in top 1
+Epoch 75, global step 3800: 'val_loss' was not in top 1
+Epoch 76, global step 3850: 'val_loss' was not in top 1
+Epoch 77, global step 3900: 'val_loss' was not in top 1
+Epoch 78, global step 3950: 'val_loss' reached 0.63314 (best 0.63314), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.63.ckpt' as top 1
+Epoch 79, global step 4000: 'val_loss' was not in top 1
+Epoch 80, global step 4050: 'val_loss' was not in top 1
+Epoch 81, global step 4100: 'val_loss' reached 0.63304 (best 0.63304), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.63.ckpt' as top 1
+Epoch 82, global step 4150: 'val_loss' was not in top 1
+Epoch 83, global step 4200: 'val_loss' reached 0.63220 (best 0.63220), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.63.ckpt' as top 1
+Epoch 84, global step 4250: 'val_loss' was not in top 1
+Epoch 85, global step 4300: 'val_loss' reached 0.63069 (best 0.63069), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.63.ckpt' as top 1
+Epoch 86, global step 4350: 'val_loss' was not in top 1
+Epoch 87, global step 4400: 'val_loss' reached 0.62876 (best 0.62876), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.63.ckpt' as top 1
+Epoch 88, global step 4450: 'val_loss' was not in top 1
+Epoch 89, global step 4500: 'val_loss' was not in top 1
+Epoch 90, global step 4550: 'val_loss' was not in top 1
+Epoch 91, global step 4600: 'val_loss' was not in top 1
+Epoch 92, global step 4650: 'val_loss' was not in top 1
+Epoch 93, global step 4700: 'val_loss' was not in top 1
+Epoch 94, global step 4750: 'val_loss' was not in top 1
+Epoch 95, global step 4800: 'val_loss' was not in top 1
+Epoch 96, global step 4850: 'val_loss' was not in top 1
+Epoch 97, global step 4900: 'val_loss' was not in top 1
+Epoch 98, global step 4950: 'val_loss' reached 0.62759 (best 0.62759), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.63.ckpt' as top 1
+Epoch 99, global step 5000: 'val_loss' reached 0.62631 (best 0.62631), saving model to '/home/konstantin.smirnov/associative-recurrent-memory-transformer/lstm_experimental/checkpoints/len400-best-checkpoint-val_loss=0.63.ckpt' as top 1
+`Trainer.fit` stopped: `max_epochs=100` reached.
