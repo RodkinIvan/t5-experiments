@@ -1,6 +1,5 @@
 import sys
 import os
-sys.path.insert(0, 'baselines/rwkv/RWKV_PEFT')
 os.environ["RWKV_TRAIN_TYPE"] = 'infctx'
 os.environ["WKV"] = 'fla'
 os.environ['RWKV_MY_TESTING'] = 'x060'
@@ -12,11 +11,7 @@ from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 
 from baselines.rwkv.RWKV_v5.src.model import RWKV as RWKV5
 from baselines.rwkv.RWKV_v6.src.model import RWKV as RWKV6
-# from baselines.rwkv.RWKV_PEFT.src.model import RWKV
-
-from transformers import RwkvForCausalLM
 from munch import Munch
-# from rwkv.model import RWKV as RWKV_for_args
 
 class RWKVModel(torch.nn.Module):
     def __init__(self, *args, **kwargs):
@@ -86,10 +81,6 @@ class RWKV_v6(RWKVModel):
     def __init__(self, *args, **kwargs):
         super().__init__()
         self.model = RWKV6(*args, **kwargs)
-        # self.config = Munch(
-        #     n_embd=self.model.args.n_embd,
-        #     hidden_size=self.model.args.n_embd
-        # )
         self.config = Munch(
             n_embd=self.model.n_embd,
             hidden_size=self.model.n_embd
@@ -102,71 +93,24 @@ class RWKV_v6(RWKVModel):
             grad_cp=True
         )
         model = RWKV_v6(**args)
-
-        # path = '/home/ivan.rodkin/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth'
-        # args = RWKV_for_args(model=path, strategy='cuda fp16').args
-        # del args.strategy_string
-        # args = Munch()
-        # args.vocab_size = 50277
-        # args.my_pos_emb = 0
-        # args.pre_ffn = 0
-        # args.head_size_a = 64
-        # args.head_qk = 0
-        # args.head_size_divisor = 8
-        # args.dropout = 0
-        # args.my_testing = 'x060'
-        # args.chunk_ctx = 128
-        # args.grad_cp = True
-        # args.n_layer=12
-        # args.n_embd = 768
-        # args.dim_att = 768
-        # args.dim_ffn = 2688
-        # args.n_head = 12
-        # model = RWKV_v5(args)
-        # model.model.load_state_dict(torch.load(path, map_location='cpu'))
         return model
 
 class RWKV_v5(RWKVModel):
     def __init__(self, *args, **kwargs):
         super().__init__()
         self.model = RWKV5(*args, **kwargs)
-        # self.config = Munch(
-        #     n_embd=self.model.args.n_embd,
-        #     hidden_size=self.model.args.n_embd
-        # )
         self.config = Munch(
             n_embd=self.model.n_embd,
             hidden_size=self.model.n_embd
         )
     @staticmethod
     def from_pretrained(*_args, **kwargs):
+        load = _args[0]
         args = dict(
-            load_model='/home/ivan.rodkin/lab/RWKV-5-World-0.4B-v2-20231113-ctx4096.pth',
-            grad_cp=False
+            load_model=load,
+            grad_cp=True
         )
         model = RWKV_v5(**args)
-
-        # path = '/home/ivan.rodkin/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth'
-        # args = RWKV_for_args(model=path, strategy='cuda fp16').args
-        # del args.strategy_string
-        # args = Munch()
-        # args.vocab_size = 50277
-        # args.my_pos_emb = 0
-        # args.pre_ffn = 0
-        # args.head_size_a = 64
-        # args.head_qk = 0
-        # args.head_size_divisor = 8
-        # args.dropout = 0
-        # args.my_testing = 'x060'
-        # args.chunk_ctx = 128
-        # args.grad_cp = True
-        # args.n_layer=12
-        # args.n_embd = 768
-        # args.dim_att = 768
-        # args.dim_ffn = 2688
-        # args.n_head = 12
-        # model = RWKV_v5(args)
-        # model.model.load_state_dict(torch.load(path, map_location='cpu'))
         return model
 
 class MemoryCell(torch.nn.Module):
