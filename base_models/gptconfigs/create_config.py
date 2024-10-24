@@ -45,5 +45,6 @@ config['num_attention_heads'] = int(args.num_attention_heads)
 config_name = f"neox_tiny_{args.num_hidden_layers}l{args.num_attention_heads}hd{args.hidden_size}"
 print(f'Saving config {config_name}')
 save_path = os.path.join(save_folder, f'{config_name}.json')
+os.makedirs(save_folder, exist_ok=True)
 with open(save_path, 'w') as f:
     json.dump(config, f)

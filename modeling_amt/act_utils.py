@@ -31,7 +31,7 @@ class ACT_basic(nn.Module):
         self.p.bias.data.fill_(1) 
         self.threshold = 1 - 0.1
 
-    def forward(self, state, inputs, fn, time_enc, pos_enc, max_hop, encoder_output=None):
+    def forward(self, *args, state, inputs, fn, time_enc, pos_enc, max_hop,  encoder_output=None, **kwargs):
         # init_hdd
         ## [B, S]
         halting_probability = torch.zeros(inputs.shape[0],inputs.shape[1]).cuda()
@@ -43,10 +43,11 @@ class ACT_basic(nn.Module):
         previous_state = torch.zeros_like(inputs).cuda()
         step = 0
         # for l in range(self.num_layers):
+        rest = None
         while( ((halting_probability<self.threshold) & (n_updates < max_hop)).byte().any()):
             # Add timing signal
-            state = state + time_enc[:, :inputs.shape[1], :].type_as(inputs.data)
-            state = state + pos_enc[:, step, :].unsqueeze(1).repeat(1,inputs.shape[1],1).type_as(inputs.data)
+            # state = state + time_enc[:, :inputs.shape[1], :].type_as(inputs.data)
+            # state = state + pos_enc[:, step, :].unsqueeze(1).repeat(1,inputs.shape[1],1).type_as(inputs.data)
 
             p = self.sigma(self.p(state)).squeeze(-1)
             # Mask for inputs which have not halted yet
@@ -81,7 +82,10 @@ class ACT_basic(nn.Module):
                 state, _ = fn((state,encoder_output))
             else:
                 # apply transformation on the state
-                state = fn(state)
+                state = fn(state, *args, **kwargs)
+                if isinstance(state, tuple) and len(state) > 1:
+                    rest = state[1:]
+                    state = state[0]
 
             # update running part in the weighted state and keep the rest
             previous_state = ((state * update_weights.unsqueeze(-1)) + (previous_state * (1 - update_weights.unsqueeze(-1))))
@@ -89,4 +93,7 @@ class ACT_basic(nn.Module):
             ## to save a line I assigned to previous_state so in the next 
             ## iteration is correct. Notice that indeed we return previous_state
             step+=1
-        return previous_state, (remainders,n_updates)
+        if rest is None:
+            return previous_state, (remainders,n_updates)
+        else:
+            return (previous_state, *rest), (remainders, n_updates)
