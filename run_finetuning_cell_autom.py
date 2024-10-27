@@ -314,7 +314,7 @@ if __name__ == '__main__':
             mem_cell_args['wrap_pos'] = args.wrap_pos
         if args.layers_attr is not None:
             mem_cell_args['layers_attr'] = args.layers_attr
-        if args.no_denom is not None:
+        if args.no_denom:
             mem_cell_args['use_denom'] = not args.no_denom
         if args.freeze_mem is not None:
             mem_cell_args['freeze_mem'] = args.freeze_mem
