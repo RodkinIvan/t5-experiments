@@ -120,8 +120,8 @@ class AssociativeLayerWrapper(torch.nn.Module):
         out = self.layer(hidden_states, *args, **kwargs)
         if not self.generate_mode:
             # reminder
-            # mem_tokens = out[0][:, :-self.num_mem_tokens]
-            mem_tokens = out[0][:, -self.num_mem_tokens:]
+            mem_tokens = out[0][:, :-self.num_mem_tokens]
+            # mem_tokens = out[0][:, -self.num_mem_tokens:]
             # mem_tokens = out[0]
             self.update_mem(mem_tokens)
             self.first_seg = False
