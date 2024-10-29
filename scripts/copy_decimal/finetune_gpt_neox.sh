@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=0,1
-NP=2 # ./test_bert_sparse_pretrain_train_valid.sh
+export CUDA_VISIBLE_DEVICES=1
+NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
 cd ../..
-export WANDB_PROJECT=cellular_automata
+export WANDB_PROJECT=gpt_neox
 CUBLAS_WORKSPACE_CONFIG=:4096:2
 CUDA_LAUNCH_BLOCKING=1
-TASK_NAME=CA
+TASK_NAME=copy_decimal
 MODEL_TYPE=decoder
-MEMORY_CELL=modeling_amt.language_modeling:AssociativeMemoryCell
-RECURRENT_WRAPPER=modeling_amt.language_modeling:AssociativeRecurrentWrapper
+MEMORY_CELL=baselines.dummy.language_modeling:MemoryCell
+RECURRENT_WRAPPER=baselines.dummy.language_modeling:RecurrentWrapper
 BACKBONE_CLS=transformers:GPTNeoXForCausalLM
 
-DATASET_PATH=irodkin/1dCA_r2s20T20
+# DATASET_PATH=steeldream/copy_binary
+DATASET_PATH=steeldream/copy_decimal
+# DATASET_PATH=steeldream/reverse_binary
+# DATASET_PATH=steeldream/reverse_decimal
+# DATASET_PATH=irodkin/1dCA_r2s20T20
 
 ITERS=30000
 TBS=256
@@ -35,13 +39,11 @@ NUM_LAYERS=4
 cd base_models/gptconfigs
 python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --num_attention_heads $NUM_LAYERS
 cd ../..
-MODEL_CFG=/home/ivan.rodkin/lab/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
-
+MODEL_CFG=/home/arman/associative-recurrent-memory-transformer/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
 
 
 for N in 5
 do
-
 
 for (( j=0; j<${#MAX_N_SEGMENTSS[@]}; j++ ))
 do
@@ -67,18 +69,11 @@ do
 for LR in $LR_
 do
 
-# if [[ j -gt 0 ]]
-# then
-#     PREV_SEQ_LEN=$(((INPUT_SIZE)*${MAX_N_SEGMENTSS[j-1]}))
-#     MODEL_CPT=../runs/lm_long/amt/${TASK_NAME}/$MODEL_NAME/lr${LRS[j-1]}_${SCHEDULER}_dmem${D_MEM}_${PREV_SEQ_LEN}-${MAX_N_SEGMENTSS[j-1]}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N 
-# else
-#     MODEL_CPT=None
-# fi
 MODEL_CPT=None
 
 echo RUNNING: TASK_NAME SRC_LEN MODEL_NAME MODEL_CLS N_SEG MEMORY_SIZE INPUT_SEQ_LEN LR N
 echo RUNNING: $TASK_NAME $SRC_LEN $MODEL_NAME $BACKBONE_CLS $MAX_N_SEGMENTS $MEMORY_SIZE $INPUT_SEQ_LEN $LR $N
-accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29501 run_finetuning_cell_autom.py \
+accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29501 run_finetuning_gpt_neox.py \
         --task_name $TASK_NAME \
         --model_path ../runs/lm_long/amt/${TASK_NAME}/$MODEL_NAME/lr${LR}_${SCHEDULER}_dmem${D_MEM}_${INPUT_SEQ_LEN}-${MAX_N_SEGMENTS}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N \
         --model_cfg $MODEL_CFG \
@@ -113,8 +108,6 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --layers_attr gpt_neox.layers \
         --act_on \
         --max_hop 1
-        # --freeze_mem
-        # --repeat_state
 done
 done
 done

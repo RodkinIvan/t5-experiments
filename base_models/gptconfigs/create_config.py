@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 home = Path.home()
-save_folder = f"{home}/rmt/wip/base_models/gptconfigs/"
+save_folder = f"/home/arman/associative-recurrent-memory-transformer/base_models/gptconfigs/"
 default_config = {
   "architectures": [
     "GPTNeoXForCausalLM"
