@@ -95,7 +95,7 @@ class RecurrentWrapper(torch.nn.Module):
         
     def process_outputs(self, cell_outputs, **kwargs):
         out = CausalLMOutputWithCrossAttentions()
-        full_logits = torch.cat([o.logits for o in cell_outputs], dim=1)
+        full_logits = torch.cat([o["logits"] for o in cell_outputs], dim=1)
         labels = kwargs.get('labels')
         if labels is not None:
             shift_labels = labels[..., 1:].contiguous()
@@ -121,7 +121,16 @@ class RecurrentWrapper(torch.nn.Module):
         segment_keys = ['loss', 'logits']
         if kwargs.get('output_attentions'):
             segment_keys.append('attentions')
-
+        remainders = []
+        n_updates = []
+        for o in cell_outputs:
+                remainders.extend(o['remainders'])
+                n_updates.extend(o['n_updates'])
+        remainders = torch.mean(torch.stack(remainders, dim=0))
+        n_updates = torch.mean(torch.stack(n_updates, dim=0))
+        out['n_updates'] = n_updates.detach().cpu()
+        out['remainders'] = remainders.detach().cpu()
+        out['loss'] = out['loss'] + 0.0 * remainders
         for seg_num, o in enumerate(cell_outputs):
             for key, value in o.items():
                 if any([sk in key for sk in segment_keys]):
