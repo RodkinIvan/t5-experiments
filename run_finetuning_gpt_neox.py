@@ -169,7 +169,7 @@ if __name__ == '__main__':
         return collated
 
 
-    def copy_reverse_collate_fn(batch, min_length=5, valid=False, reverse=False):
+    def copy_collate_fn(batch, min_length=5, valid=False, reverse=False):
         if valid:
             length = array_size
         length = random.randint(min_length, array_size)
@@ -197,12 +197,15 @@ if __name__ == '__main__':
         }
         return collated
 
+    def reverse_collate_fn(batch, min_length=5, valid=False):
+        return copy_collate_fn(batch, min_length=min_length, valid=valid, reverse=True)
+
     collate_fn_dict = {
         "irodkin/1dCA_r2s20T20": cell_autom_collate_fn,
-        "steeldream/copy_binary": copy_reverse_collate_fn,
-        "steeldream/copy_decimal": copy_reverse_collate_fn,
-        "steeldream/reverse_binary": lambda x: copy_reverse_collate_fn(x, reverse=True),
-        "steeldream/reverse_decimal": lambda x: copy_reverse_collate_fn(x, reverse=True),
+        "steeldream/copy_binary": copy_collate_fn,
+        "steeldream/copy_decimal": copy_collate_fn,
+        "steeldream/reverse_binary": reverse_collate_fn,
+        "steeldream/reverse_decimal": reverse_collate_fn
     }
 
     collate_fn = collate_fn_dict.get(dataset_path)
