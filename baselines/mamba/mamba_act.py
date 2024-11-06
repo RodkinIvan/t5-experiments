@@ -107,14 +107,10 @@ class AdaptiveMambaForCausalLM(MambaForCausalLM):
     def __init__(self, config):
         super(AdaptiveMambaForCausalLM, self).__init__(config)
         
-        # Flag for enabling ACT
+        # Flag for enabling ACT, and max_hop
         self.use_act = config.use_act if hasattr(config, 'use_act') else False
+        self.max_hop = config.max_hop if hasattr(config, 'max_hop') else 4
         
-        # Timing and positional signals
-        self.timing_signal = gen_timing_signal(config.num_hidden_layers, config.hidden_size)
-        self.position_signal = gen_timing_signal(config.num_hidden_layers, config.hidden_size)
-        
-
         # Initialize ACT layer if enabled
         if self.use_act:
             self.act_fn = ACT_basic(config.hidden_size)
@@ -130,42 +126,26 @@ class AdaptiveMambaForCausalLM(MambaForCausalLM):
         self.n_updates = self.n_updates.to(x.device)
         self.segments_passed = self.segments_passed.to(x.device)
         if self.use_act:
-            # Apply ACT if enabled
             x, (remainders, n_updates) = self.act_fn(
                 state=x,
                 inputs=x,
                 fn=lambda x: self.apply_layers(x),
-                # time_enc=self.timing_signal,
-                # pos_enc=self.position_signal,
-                max_hop=4,
+                max_hop=self.max_hop,
             )
-            self.remainders = self.remainders + remainders.detach() # 1 - \sum(h_i); L' = L + tau * mean(reminders)
-            self.n_updates = self.n_updates + n_updates.detach()
+            self.remainders = self.remainders + remainders # 1 - \sum(h_i); L' = L + tau * mean(reminders)
+            self.n_updates = self.n_updates + n_updates
             self.segments_passed = self.segments_passed + 1
         else:
-            # Standard pass through the model layers
             x = self.apply_layers(x)
 
-        # Final layer norm and head projection
         x = self.backbone.norm_f(x)
         logits = self.lm_head(x)
-        if False:#labels is not None:
-            # Flatten logits and target for CrossEntropyLoss
-            logits = logits.view(-1, logits.size(-1))  # [batch_size * seq_len, vocab_size]
-            target = labels.view(-1)  # [batch_size * seq_len]
-
-            # Calculate loss
-            criterion = nn.CrossEntropyLoss()
-            loss = criterion(logits, target)
-            return {"loss": loss, "logits": logits, "n_updates": self.n_updates.detach().cpu(),
-                   "remainders": self.remainders.detach().cpu()}
-        else:
-            return  {"logits": logits,
-                    "n_updates": self.n_updates.detach().cpu(),
-                   "remainders": self.remainders.detach().cpu()}
+        return  {"logits": logits,
+                    "n_updates": self.n_updates,
+                    "remainders": self.remainders}
 
     def apply_layers(self, x):
-        # Sequentially apply all backbone layers
         for layer in self.backbone.layers:
             x = layer(x)
         return x
+        
