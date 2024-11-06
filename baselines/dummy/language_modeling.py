@@ -5,10 +5,12 @@ from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 from munch import Munch
 
 class MemoryCell(torch.nn.Module):
-    def __init__(self, base_model):
+    def __init__(self, base_model,
+                 ):
         super().__init__()
         self.model = base_model
-
+        
+        
     def forward(self, input_ids, memory_state=None, **kwargs):
         out = self.model(input_ids)
         return out, memory_state
@@ -49,11 +51,17 @@ class MemoryCell(torch.nn.Module):
         return out
 
 class RecurrentWrapper(torch.nn.Module):
-    def __init__(self, memory_cell, **rmt_kwargs):
+    def __init__(self, memory_cell, 
+                 time_penalty=0,
+                 act_on=False,
+                 **rmt_kwargs):
         super().__init__()
         self.memory_cell = memory_cell
         self.rmt_config = rmt_kwargs
-
+        self.time_penalty = time_penalty
+        self.act_on = act_on
+        
+        
     def forward(self, 
                 input_ids, 
                 labels=None, 
@@ -121,16 +129,17 @@ class RecurrentWrapper(torch.nn.Module):
         segment_keys = ['loss', 'logits']
         if kwargs.get('output_attentions'):
             segment_keys.append('attentions')
-        remainders = []
-        n_updates = []
-        for o in cell_outputs:
-                remainders.extend(o['remainders'])
-                n_updates.extend(o['n_updates'])
-        remainders = torch.mean(torch.stack(remainders, dim=0))
-        n_updates = torch.mean(torch.stack(n_updates, dim=0))
-        out['n_updates'] = n_updates.detach().cpu()
-        out['remainders'] = remainders.detach().cpu()
-        out['loss'] = out['loss'] + 0.0 * remainders
+        if self.act_on:
+            remainders = []
+            n_updates = []
+            for o in cell_outputs:
+                    remainders.extend(o['remainders'])
+                    n_updates.extend(o['n_updates'])
+            remainders = torch.mean(torch.stack(remainders, dim=0))
+            n_updates = torch.mean(torch.stack(n_updates, dim=0))
+            out['n_updates'] = n_updates.detach().cpu()
+            out['remainders'] = remainders.detach().cpu()
+            out['loss'] = out['loss'] + self.time_penalty * remainders
         for seg_num, o in enumerate(cell_outputs):
             for key, value in o.items():
                 if any([sk in key for sk in segment_keys]):
