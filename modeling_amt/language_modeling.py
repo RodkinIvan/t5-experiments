@@ -639,7 +639,7 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             out['loss'] = loss_fct(flat_logits, flat_labels)
         else:
             out['loss'] = 0 
-        if not os.environ['HF_Trainer']:
+        if ('HF_Trainer' not in os.environ) or not os.environ['HF_Trainer']:
             out['ce_loss'] = out['loss']
         
         out['logits'] = full_logits
@@ -650,7 +650,7 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             full_hidden_states = tuple([torch.cat(layer_hs, dim=1) for layer_hs in zip(*[o.hidden_states for o in cell_outputs])])
             segment_keys.append('hidden_states')
             out['hidden_states'] = full_hidden_states
-        if not os.environ['HF_Trainer']:
+        if ('HF_Trainer' not in os.environ) or not os.environ['HF_Trainer']:
             for seg_num, o in enumerate(cell_outputs):
                 for key, value in o.items():
                     if any([sk in key for sk in segment_keys]):
