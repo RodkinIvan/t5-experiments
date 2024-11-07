@@ -107,7 +107,7 @@ class AssociativeLayerWrapper(torch.nn.Module):
             hidden_states = num / denom # (bsz, n_heads, seq_len, d_model // n_heads)
         else:
             hidden_states = num
-        hidden_states = hidden_states.permute(0, 2, 1, 3).reshape(bsz, seq_len, d_model)
+        hidden_states = self._from_heads(hidden_states)
         return hidden_states
     
     def forward(self, hidden_states, *args, **kwargs):
@@ -370,7 +370,7 @@ class AssociativeMemoryCell(torch.nn.Module):
         self.num_mem_tokens = num_mem_tokens
         embeddings = self.model.get_input_embeddings()
         memory_dim =  getattr(self.model.config, 'n_embd', self.model.config.hidden_size)
-        memory_weights = torch.randn((num_mem_tokens, memory_dim)) * embeddings.weight.data.std()
+        memory_weights = torch.randn((num_mem_tokens, memory_dim), device=embeddings.weight.data.device) * embeddings.weight.data.std()
         self.register_parameter('memory', torch.nn.Parameter(memory_weights, requires_grad=True))
 
     def wrap_positional_embeddings(self, num_mem_tokens):
@@ -518,6 +518,9 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
         self.memory_cell = memory_cell
         self.rmt_config = rmt_kwargs
 
+    def gradient_checkpointing_enable(self, *args, **kwargs):
+        self.memory_cell.model.gradient_checkpointing_enable(*args, **kwargs)
+        
     def forward(self, 
                 input_ids, 
                 labels=None, 
@@ -636,8 +639,8 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             out['loss'] = loss_fct(flat_logits, flat_labels)
         else:
             out['loss'] = 0 
-
-        out['ce_loss'] = out['loss']
+        if not os.environ['HF_Trainer']:
+            out['ce_loss'] = out['loss']
         
         out['logits'] = full_logits
         segment_keys = ['loss', 'logits']
@@ -647,11 +650,11 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             full_hidden_states = tuple([torch.cat(layer_hs, dim=1) for layer_hs in zip(*[o.hidden_states for o in cell_outputs])])
             segment_keys.append('hidden_states')
             out['hidden_states'] = full_hidden_states
-
-        for seg_num, o in enumerate(cell_outputs):
-            for key, value in o.items():
-                if any([sk in key for sk in segment_keys]):
-                    out[f'{key}_{seg_num}'] = value
+        if not os.environ['HF_Trainer']:
+            for seg_num, o in enumerate(cell_outputs):
+                for key, value in o.items():
+                    if any([sk in key for sk in segment_keys]):
+                        out[f'{key}_{seg_num}'] = value
 
         remainders = []
         n_updates = []
