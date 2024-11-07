@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=0,1
-NP=2 # ./test_bert_sparse_pretrain_train_valid.sh
+export CUDA_VISIBLE_DEVICES=0
+NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
 cd ../..
@@ -29,6 +29,8 @@ INPUT_TOKENS=20
 D_MEM=32
 N_HEADS=1
 
+ACT_TYPE=layer
+
 DIM=128
 NUM_LAYERS=4
 
@@ -39,7 +41,7 @@ MODEL_CFG=/home/ivan.rodkin/lab/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYER
 
 
 
-for N in 5
+for N in 6
 do
 
 
@@ -70,7 +72,7 @@ do
 # if [[ j -gt 0 ]]
 # then
 #     PREV_SEQ_LEN=$(((INPUT_SIZE)*${MAX_N_SEGMENTSS[j-1]}))
-#     MODEL_CPT=../runs/lm_long/amt/${TASK_NAME}/$MODEL_NAME/lr${LRS[j-1]}_${SCHEDULER}_dmem${D_MEM}_${PREV_SEQ_LEN}-${MAX_N_SEGMENTSS[j-1]}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N 
+#     MODEL_CPT=../runs/lm_long/armt/${TASK_NAME}/$MODEL_NAME/lr${LRS[j-1]}_${SCHEDULER}_dmem${D_MEM}_${PREV_SEQ_LEN}-${MAX_N_SEGMENTSS[j-1]}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}_act$ACT_TYPE_shift$SHIFT/run_$N 
 # else
 #     MODEL_CPT=None
 # fi
@@ -80,7 +82,7 @@ echo RUNNING: TASK_NAME SRC_LEN MODEL_NAME MODEL_CLS N_SEG MEMORY_SIZE INPUT_SEQ
 echo RUNNING: $TASK_NAME $SRC_LEN $MODEL_NAME $BACKBONE_CLS $MAX_N_SEGMENTS $MEMORY_SIZE $INPUT_SEQ_LEN $LR $N
 accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29501 run_finetuning_cell_autom.py \
         --task_name $TASK_NAME \
-        --model_path ../runs/lm_long/amt/${TASK_NAME}/$MODEL_NAME/lr${LR}_${SCHEDULER}_dmem${D_MEM}_${INPUT_SEQ_LEN}-${MAX_N_SEGMENTS}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N \
+        --model_path ../runs/lm_long/armt/${TASK_NAME}/$MODEL_NAME/lr${LR}_${SCHEDULER}_dmem${D_MEM}_${INPUT_SEQ_LEN}-${MAX_N_SEGMENTS}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}_act$ACT_TYPE_shift$SHIFT/run_$N \
         --model_cfg $MODEL_CFG \
         --dataset_path $DATASET_PATH \
         --model_type $MODEL_TYPE \
@@ -105,16 +107,17 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --data_n_workers 2 \
         --log_interval 50 --valid_interval 250 \
         --show_valid_examples 5 \
-        --early_stopping_patience 15 \
+        --early_stopping_patience 30 \
         --seed $(($N+42*$j)) \
-        --clip_grad_value 1.0 \
+        --clip_grad_value 0.1 \
         --save_best \
         --d_mem $D_MEM \
         --layers_attr gpt_neox.layers \
         --act_on \
         --max_hop 2 \
-        --time_penalty 0.0 \
-        --act_type layer
+        --time_penalty 3e-4 \
+        --act_type $ACT_TYPE \
+        --repeat_state
         # --freeze_mem
         # --repeat_state
 done
