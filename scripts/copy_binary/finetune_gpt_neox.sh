@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=0,1
-NP=2 # ./test_bert_sparse_pretrain_train_valid.sh
+export CUDA_VISIBLE_DEVICES=0
+NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
 cd ../..
@@ -21,7 +21,7 @@ TBS=256
 MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
 SHIFTS=(1)
-LRS=(3e-4)
+LRS=(3e-4)      
 BSS=(128)
 
 INPUT_TOKENS=20
@@ -94,7 +94,7 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --data_n_workers 2 \
         --log_interval 50 --valid_interval 250 \
         --show_valid_examples 5 \
-        --early_stopping_patience 15 \
+        --early_stopping_patience 50 \
         --seed $(($N+42*$j)) \
         --clip_grad_value 1.0 \
         --save_best
