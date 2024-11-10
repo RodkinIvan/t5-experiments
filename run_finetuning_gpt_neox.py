@@ -162,9 +162,9 @@ if __name__ == '__main__':
             X1 = b['input_ids'][:batch_array_size]
             X2 = X1[::-1] if reverse else X1
             batch[i] = {
-                'input_ids': X1 + [sep_token] + X2,
-                'labels': X1 + [sep_token] + X2,
-                'attention_mask': [1] * (2 * batch_array_size + 1)
+                'input_ids': [eos_token] + X1 + [gen_token] + X2 ,
+                'labels': [eos_token] +  X1 + [gen_token] + X2 ,
+                'attention_mask': [1] * (2 * batch_array_size + 2)
             }
         
         input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
@@ -173,6 +173,13 @@ if __name__ == '__main__':
     
         labels_mask = torch.zeros_like(input_ids).bool()
         labels_mask[:, -batch_array_size:] = True
+        B, L = input_ids.shape
+        logger.info(L)
+        if 'armt' in args.model_path:
+            input_ids = input_ids.reshape(B, 2, L // 2)
+            labels = labels.reshape(B, 2, L // 2)
+            labels_mask = labels_mask.reshape(B, 2, L // 2)
+            attention_mask = attention_mask.reshape(B, 2, L // 2)
         collated = {
             'input_ids': input_ids,
             'labels': labels,
@@ -180,7 +187,6 @@ if __name__ == '__main__':
             'labels_mask': labels_mask,
         }
         return collated
-
 
     def reverse_collate_fn(batch, min_length=5, valid=False):
         return copy_collate_fn(batch, min_length=min_length, valid=valid, reverse=True)
@@ -223,7 +229,7 @@ if __name__ == '__main__':
             }
             return collated
         return addition_collate_fn
-    
+ 
 
     def ca_collate_fn(batch, valid=False):
         batch_array_size = args.valid_array_size if valid else args.train_array_size
@@ -405,12 +411,13 @@ if __name__ == '__main__':
         if args.dataset_name == "ca":
             array_size = args.valid_array_size
         if args.dataset_name in ["reverse_binary", "reverse_decimal", "copy_binary", "copy_decimal"]:
-            array_size = data['labels'][0].shape[0] // 2
+            array_size = data['labels'][0].shape[0] // 2 - 1 if 'armt' not in args.model_path else data['labels'][0].shape[-1] - 1
         if args.dataset_name in ["addition_binary", "addition_decimal"]:
             array_size = data['labels'][0].shape[0] // 3
 
         metrics = {}
-        y, p = data['labels'][:, -array_size:], data['predictions'][:, -array_size-1:-1]
+        y = data['labels'][:, -array_size:] if 'armt' not in args.model_path else data['labels'][:, -1, -array_size:]
+        p = data['predictions'][:, -array_size-1:-1]
 
         metrics['bit_accuracy'] = np.mean((y.cpu().numpy()) == (p.cpu().numpy()))
         metrics['exact_match'] = np.mean([np.array_equal(p_, y_) for p_, y_ in zip(p.cpu().numpy(), y.cpu().numpy())])
@@ -438,13 +445,17 @@ if __name__ == '__main__':
     model, optimizer, train_dataloader, valid_dataloader, test_dataloader = accelerator.prepare(
         model, optimizer, train_dataloader, valid_dataloader, None)
 
-
+    fwd_kwargs = dict()
+    if args.output_last_segment_only:
+        fwd_kwargs['output_only_last_segment'] = True
+    if 'armt' in args.model_path and args.dataset_name != 'ca':
+        fwd_kwargs['input_segmented'] = True
     trainer = Trainer(
         args, accelerator, model, optimizer, train_dataloader, valid_dataloader,
         keep_for_metrics_fn=keep_for_metrics_fn,
         batch_metrics_fn=batch_metrics_fn,
         stop_metric_condition=lambda m: m >= args.desired_metric,
-        forward_kwargs={'output_only_last_segment': True} if args.output_last_segment_only else {},
+        forward_kwargs=fwd_kwargs,
     )
 
     if not args.validate_only:

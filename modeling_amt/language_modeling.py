@@ -107,7 +107,7 @@ class AssociativeLayerWrapper(torch.nn.Module):
             hidden_states = num / denom # (bsz, n_heads, seq_len, d_model // n_heads)
         else:
             hidden_states = num
-        hidden_states = hidden_states.permute(0, 2, 1, 3).reshape(bsz, seq_len, d_model)
+        hidden_states = self._from_heads(hidden_states)
         return hidden_states
     
     def forward(self, hidden_states, *args, **kwargs):
@@ -123,6 +123,16 @@ class AssociativeLayerWrapper(torch.nn.Module):
             # mem_tokens = out[0]
             self.update_mem(mem_tokens)
             self.first_seg = False
+        return out
+    
+    def forward_no_update(self, hidden_states, *args, **kwargs):
+        if not self.first_seg:
+            hidden_states = self.associate(
+                # self.ln(
+                    hidden_states
+                # )
+            )+ hidden_states
+        out = self.layer(hidden_states, *args, **kwargs)
         return out
 
     def update_mem(self, mem_tokens):
@@ -274,7 +284,7 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
         self.n_updates = self.n_updates.to(hidden_states.device)
         self.segments_passed = self.segments_passed.to(hidden_states.device)
 
-        fwd = super().forward
+        fwd = super().forward_no_update
         out, (remainders, n_updates) = self.act(
             *args,
             state=hidden_states, 
@@ -285,7 +295,11 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
             max_hop=self.depth,
             **kwargs
         )
-        
+        if not self.generate_mode:
+            mem_tokens = out[0][:, -self.num_mem_tokens:]
+            # mem_tokens = out[0]
+            self.update_mem(mem_tokens)
+            self.first_seg = False
         self.remainders = self.remainders + remainders # 1 - \sum(h_i); L' = L + tau * mean(reminders)
         self.n_updates = self.n_updates + n_updates
         self.segments_passed = self.segments_passed + 1
@@ -370,7 +384,7 @@ class AssociativeMemoryCell(torch.nn.Module):
         self.num_mem_tokens = num_mem_tokens
         embeddings = self.model.get_input_embeddings()
         memory_dim =  getattr(self.model.config, 'n_embd', self.model.config.hidden_size)
-        memory_weights = torch.randn((num_mem_tokens, memory_dim)) * embeddings.weight.data.std()
+        memory_weights = torch.randn((num_mem_tokens, memory_dim), device=embeddings.weight.data.device) * embeddings.weight.data.std()
         self.register_parameter('memory', torch.nn.Parameter(memory_weights, requires_grad=True))
 
     def wrap_positional_embeddings(self, num_mem_tokens):
@@ -518,6 +532,9 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
         self.memory_cell = memory_cell
         self.rmt_config = rmt_kwargs
 
+    def gradient_checkpointing_enable(self, *args, **kwargs):
+        self.memory_cell.model.gradient_checkpointing_enable(*args, **kwargs)
+        
     def forward(self, 
                 input_ids, 
                 labels=None, 
@@ -636,8 +653,8 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             out['loss'] = loss_fct(flat_logits, flat_labels)
         else:
             out['loss'] = 0 
-
-        out['ce_loss'] = out['loss']
+        if ('HF_Trainer' not in os.environ) or not os.environ['HF_Trainer']:
+            out['ce_loss'] = out['loss']
         
         out['logits'] = full_logits
         segment_keys = ['loss', 'logits']
@@ -647,11 +664,11 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             full_hidden_states = tuple([torch.cat(layer_hs, dim=1) for layer_hs in zip(*[o.hidden_states for o in cell_outputs])])
             segment_keys.append('hidden_states')
             out['hidden_states'] = full_hidden_states
-
-        for seg_num, o in enumerate(cell_outputs):
-            for key, value in o.items():
-                if any([sk in key for sk in segment_keys]):
-                    out[f'{key}_{seg_num}'] = value
+        if ('HF_Trainer' not in os.environ) or not os.environ['HF_Trainer']:
+            for seg_num, o in enumerate(cell_outputs):
+                for key, value in o.items():
+                    if any([sk in key for sk in segment_keys]):
+                        out[f'{key}_{seg_num}'] = value
 
         remainders = []
         n_updates = []
