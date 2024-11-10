@@ -13,7 +13,7 @@ MEMORY_CELL=baselines.dummy.language_modeling:MemoryCell
 RECURRENT_WRAPPER=baselines.dummy.language_modeling:RecurrentWrapper
 BACKBONE_CLS=transformers:GPTNeoXForCausalLM
 
-DATASET_NAME=reverse_binary
+DATASET_NAME=addition_binary
 
 ITERS=30000
 TBS=256
