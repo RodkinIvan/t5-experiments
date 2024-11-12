@@ -124,6 +124,16 @@ class AssociativeLayerWrapper(torch.nn.Module):
             self.update_mem(mem_tokens)
             self.first_seg = False
         return out
+    
+    def forward_no_update(self, hidden_states, *args, **kwargs):
+        if not self.first_seg:
+            hidden_states = self.associate(
+                # self.ln(
+                    hidden_states
+                # )
+            )+ hidden_states
+        out = self.layer(hidden_states, *args, **kwargs)
+        return out
 
     def update_mem(self, mem_tokens):
 
@@ -274,7 +284,7 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
         self.n_updates = self.n_updates.to(hidden_states.device)
         self.segments_passed = self.segments_passed.to(hidden_states.device)
 
-        fwd = super().forward
+        fwd = super().forward_no_update
         out, (remainders, n_updates) = self.act(
             *args,
             state=hidden_states, 
@@ -285,7 +295,11 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
             max_hop=self.depth,
             **kwargs
         )
-        
+        if not self.generate_mode:
+            mem_tokens = out[0][:, -self.num_mem_tokens:]
+            # mem_tokens = out[0]
+            self.update_mem(mem_tokens)
+            self.first_seg = False
         self.remainders = self.remainders + remainders # 1 - \sum(h_i); L' = L + tau * mean(reminders)
         self.n_updates = self.n_updates + n_updates
         self.segments_passed = self.segments_passed + 1

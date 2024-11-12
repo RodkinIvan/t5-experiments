@@ -132,6 +132,8 @@ if __name__ == '__main__':
         "reverse_decimal": "steeldream/decimal",
         "copy_binary": "steeldream/binary",
         "copy_decimal": "steeldream/decimal",
+        "addition_binary": "steeldream/addition_binary",
+        "addition_decimal": "steeldream/addition_decimal",
     }
     dataset_path = dataset_name_to_path[args.dataset_name]
 
@@ -142,7 +144,7 @@ if __name__ == '__main__':
         train_dataset = load_dataset(dataset_path, split='train')
         valid_dataset = load_dataset(dataset_path, split='validation')
         test_dataset = load_dataset(dataset_path, split='test')
-        if args.dataset_name == "ca":
+        if args.dataset_name in ["ca", "addition_binary", "addition_decimal"]: 
             args.train_array_size = len(train_dataset[0]['input_ids_0'])
             args.valid_array_size = len(valid_dataset[0]['input_ids_0'])
         elif args.dataset_name in ["reverse_binary", "reverse_decimal", "copy_binary", "copy_decimal"]:
@@ -160,9 +162,9 @@ if __name__ == '__main__':
             X1 = b['input_ids'][:batch_array_size]
             X2 = X1[::-1] if reverse else X1
             batch[i] = {
-                'input_ids': X1 + [sep_token] + X2,
-                'labels': X1 + [sep_token] + X2,
-                'attention_mask': [1] * (2 * batch_array_size + 1)
+                'input_ids': [eos_token] + X1 + [gen_token] + X2 ,
+                'labels': [eos_token] +  X1 + [gen_token] + X2 ,
+                'attention_mask': [1] * (2 * batch_array_size + 2)
             }
         
         input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
@@ -171,6 +173,13 @@ if __name__ == '__main__':
     
         labels_mask = torch.zeros_like(input_ids).bool()
         labels_mask[:, -batch_array_size:] = True
+        B, L = input_ids.shape
+        logger.info(L)
+        if 'armt' in args.model_path:
+            input_ids = input_ids.reshape(B, 2, L // 2)
+            labels = labels.reshape(B, 2, L // 2)
+            labels_mask = labels_mask.reshape(B, 2, L // 2)
+            attention_mask = attention_mask.reshape(B, 2, L // 2)
         collated = {
             'input_ids': input_ids,
             'labels': labels,
@@ -181,6 +190,46 @@ if __name__ == '__main__':
 
     def reverse_collate_fn(batch, min_length=5, valid=False):
         return copy_collate_fn(batch, min_length=min_length, valid=valid, reverse=True)
+    
+    
+    def addition_collate_fn_with_base(base):
+        def addition_collate_fn(batch, min_length=5, valid=False):
+            batch_array_size = args.valid_array_size if valid else random.randint(min_length, args.train_array_size) 
+            
+            def perform_addition(X1, X2):
+                Y = [0] * (batch_array_size + 1)
+                carry = 0
+                for i in range(batch_array_size):
+                    Y[i] = (X1[i] + X2[i] + carry) % base
+                    carry = (X1[i] + X2[i] + carry) // base
+                Y[-1] = carry
+                return Y
+
+            for i, b in enumerate(batch):
+                X1 = b['input_ids_0'][:batch_array_size]
+                X2 = b['input_ids_1'][:batch_array_size]
+                Y = perform_addition(X1, X2)
+                batch[i] = {
+                    'input_ids': X1 + [sep_token] + X2 + [gen_token] + Y,
+                    'labels': X1 + [sep_token] + X2 + [gen_token] + Y,
+                    'attention_mask': [1] * (3 * batch_array_size + 3)
+                }
+            
+            input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
+            labels = torch.stack([torch.tensor(b['labels']) for b in batch], dim=0)
+            attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
+        
+            labels_mask = torch.zeros_like(input_ids).bool()
+            labels_mask[:, -batch_array_size-1:] = True
+            collated = {
+                'input_ids': input_ids,
+                'labels': labels,
+                'attention_mask': attention_mask,
+                'labels_mask': labels_mask,
+            }
+            return collated
+        return addition_collate_fn
+ 
 
     def ca_collate_fn(batch, valid=False):
         batch_array_size = args.valid_array_size if valid else args.train_array_size
@@ -223,6 +272,8 @@ if __name__ == '__main__':
         "reverse_decimal": reverse_collate_fn,
         "copy_binary": copy_collate_fn,
         "copy_decimal": copy_collate_fn,
+        "addition_binary": addition_collate_fn_with_base(2),
+        "addition_decimal": addition_collate_fn_with_base(10),
     }
 
     collate_fn = collate_fn_dict[args.dataset_name]
@@ -360,10 +411,13 @@ if __name__ == '__main__':
         if args.dataset_name == "ca":
             array_size = args.valid_array_size
         if args.dataset_name in ["reverse_binary", "reverse_decimal", "copy_binary", "copy_decimal"]:
-            array_size = data['labels'][0].shape[0] // 2
+            array_size = data['labels'][0].shape[0] // 2 - 1 if 'armt' not in args.model_path else data['labels'][0].shape[-1] - 1
+        if args.dataset_name in ["addition_binary", "addition_decimal"]:
+            array_size = data['labels'][0].shape[0] // 3
 
         metrics = {}
-        y, p = data['labels'][:, -array_size:], data['predictions'][:, -array_size-1:-1]
+        y = data['labels'][:, -array_size:] if 'armt' not in args.model_path else data['labels'][:, -1, -array_size:]
+        p = data['predictions'][:, -array_size-1:-1]
 
         metrics['bit_accuracy'] = np.mean((y.cpu().numpy()) == (p.cpu().numpy()))
         metrics['exact_match'] = np.mean([np.array_equal(p_, y_) for p_, y_ in zip(p.cpu().numpy(), y.cpu().numpy())])
@@ -391,13 +445,17 @@ if __name__ == '__main__':
     model, optimizer, train_dataloader, valid_dataloader, test_dataloader = accelerator.prepare(
         model, optimizer, train_dataloader, valid_dataloader, None)
 
-
+    fwd_kwargs = dict()
+    if args.output_last_segment_only:
+        fwd_kwargs['output_only_last_segment'] = True
+    if 'armt' in args.model_path and args.dataset_name != 'ca':
+        fwd_kwargs['input_segmented'] = True
     trainer = Trainer(
         args, accelerator, model, optimizer, train_dataloader, valid_dataloader,
         keep_for_metrics_fn=keep_for_metrics_fn,
         batch_metrics_fn=batch_metrics_fn,
         stop_metric_condition=lambda m: m >= args.desired_metric,
-        forward_kwargs={'output_only_last_segment': True} if args.output_last_segment_only else {},
+        forward_kwargs=fwd_kwargs,
     )
 
     if not args.validate_only:
