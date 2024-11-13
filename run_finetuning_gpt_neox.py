@@ -210,9 +210,9 @@ if __name__ == '__main__':
                 X2 = b['input_ids_1'][:batch_array_size]
                 Y = perform_addition(X1, X2)
                 batch[i] = {
-                    'input_ids': X1 + [sep_token] + X2 + [gen_token] + Y,
-                    'labels': X1 + [sep_token] + X2 + [gen_token] + Y,
-                    'attention_mask': [1] * (3 * batch_array_size + 3)
+                    'input_ids': [eos_token]*2+ X1 + [sep_token]*2 + X2 + [gen_token] + Y,
+                    'labels': [eos_token]*2 + X1 + [sep_token]*2 + X2 + [gen_token] + Y,
+                    'attention_mask': [1] * (3 * batch_array_size + 6)
                 }
             
             input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
@@ -221,6 +221,13 @@ if __name__ == '__main__':
         
             labels_mask = torch.zeros_like(input_ids).bool()
             labels_mask[:, -batch_array_size-1:] = True
+
+            B, L = input_ids.shape
+            if 'armt' in args.model_path:
+                input_ids = input_ids.reshape(B, 3, L // 3)
+                labels = labels.reshape(B, 3, L // 3)
+                labels_mask = labels_mask.reshape(B, 3, L // 3)
+                attention_mask = attention_mask.reshape(B, 3, L // 3)
             collated = {
                 'input_ids': input_ids,
                 'labels': labels,
@@ -413,7 +420,7 @@ if __name__ == '__main__':
         if args.dataset_name in ["reverse_binary", "reverse_decimal", "copy_binary", "copy_decimal"]:
             array_size = data['labels'][0].shape[0] // 2 - 1 if 'armt' not in args.model_path else data['labels'][0].shape[-1] - 1
         if args.dataset_name in ["addition_binary", "addition_decimal"]:
-            array_size = data['labels'][0].shape[0] // 3
+            array_size = data['labels'][0].shape[0] // 3 - 1 if 'armt' not in args.model_path else data['labels'][0].shape[-1] - 1
 
         metrics = {}
         y = data['labels'][:, -array_size:] if 'armt' not in args.model_path else data['labels'][:, -1, -array_size:]
