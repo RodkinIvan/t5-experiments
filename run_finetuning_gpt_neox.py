@@ -172,9 +172,8 @@ if __name__ == '__main__':
         attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
     
         labels_mask = torch.zeros_like(input_ids).bool()
-        labels_mask[:, -batch_array_size:] = True
+        labels_mask[:, -batch_array_size-1:] = True
         B, L = input_ids.shape
-        logger.info(L)
         if 'armt' in args.model_path:
             input_ids = input_ids.reshape(B, 2, L // 2)
             labels = labels.reshape(B, 2, L // 2)
@@ -220,7 +219,7 @@ if __name__ == '__main__':
             attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
         
             labels_mask = torch.zeros_like(input_ids).bool()
-            labels_mask[:, -batch_array_size-1:] = True
+            labels_mask[:, -batch_array_size-2:] = True
 
             B, L = input_ids.shape
             if 'armt' in args.model_path:

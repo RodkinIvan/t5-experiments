@@ -20,7 +20,7 @@ TBS=256
 
 MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
-SHIFTS=(2)
+SHIFTS=(3)
 LRS=(3e-4)
 BSS=(128)
 
@@ -30,6 +30,7 @@ D_MEM=32
 N_HEADS=1
 
 ACT_TYPE=layer
+MAX_HOP=2
 
 DIM=128
 NUM_LAYERS=4
@@ -114,7 +115,7 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --d_mem $D_MEM \
         --layers_attr gpt_neox.layers \
         --act_on \
-        --max_hop 2 \
+        --max_hop $MAX_HOP \
         --time_penalty 3e-4 \
         --act_type $ACT_TYPE \
         --repeat_state
