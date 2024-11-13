@@ -37,10 +37,13 @@ MEMORY_SIZE=16
 D_MEM=32
 LAYERS_ATTR=gpt_neox.layers
 
+MAX_HOP=4
+ACT_TYPE=layer
+
 cd base_models/gptconfigs
 python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --num_attention_heads $NUM_LAYERS
 cd ../..
-MODEL_CFG=~/lab/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
+MODEL_CFG=~/rmt/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
 
 
 for N in 5
@@ -106,7 +109,10 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --save_best \
         --d_mem $D_MEM \
         --layers_attr $LAYERS_ATTR \
-        --num_mem_tokens $MEMORY_SIZE
+        --num_mem_tokens $MEMORY_SIZE \
+        --act_on \
+        --max_hop $MAX_HOP \
+        --act_type $ACT_TYPE
 done
 done
 done
