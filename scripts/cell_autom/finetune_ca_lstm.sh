@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
@@ -10,32 +10,32 @@ CUDA_LAUNCH_BLOCKING=1
 TASK_NAME=CA
 MODEL_TYPE=decoder
 MEMORY_CELL=baselines.dummy.language_modeling:MemoryCell
-RECURRENT_WRAPPER=modeling_lstm.language_modeling:DoubleLSTMModel
-BACKBONE_CLS=transformers:GPTNeoXForCausalLM
+RECURRENT_WRAPPER=baselines.dummy.language_modeling:RecurrentWrapper
+BACKBONE_CLS=modeling_lstm.language_modeling:DoubleLSTMModel
 
 DATASET_PATH=irodkin/1dCA_r2s20T20
 
 ITERS=30000
 TBS=256
 
-MAX_N_SEGMENTSS=(10)
-MAX_VAL_SEGMENTSS=(10)
-SHIFTS=(2)
-LRS=(3e-4)
-BSS=(256)
+MAX_N_SEGMENTSS=(2)
+MAX_VAL_SEGMENTSS=(2)
+SHIFTS=(1)
+LRS=(1e-3)
+BSS=(64)
 
-MEMORY_SIZE=16
 INPUT_TOKENS=20
-D_MEM=32
-N_HEADS=1
 
 DIM=128
+EMBED_DIM=8
 NUM_LAYERS=1
 
-cd base_models/gptconfigs
-python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --num_attention_heads $NUM_LAYERS
-cd ../..
-MODEL_CFG=/~/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
+cd base_models/configs/lstmconfigs
+python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --embedding_dim $EMBED_DIM
+cd ../../..
+pwd=$(pwd)
+echo $pwd
+MODEL_CFG=$pwd/base_models/configs/lstmconfigs/lstm_${NUM_LAYERS}ed${EMBED_DIM}hd${DIM}.json
 
 
 
@@ -90,8 +90,6 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --model_cpt $MODEL_CPT \
         --segment_size $INPUT_TOKENS \
         --input_size $INPUT_SIZE \
-        --max_n_segments $MAX_N_SEGMENTS \
-        --num_mem_tokens $MEMORY_SIZE \
         --num_timesteps $MAX_N_SEGMENTS \
         --num_test_timesteps $MAX_VAL_SEGMENTS \
         --prediction_shift $SHIFT \
@@ -109,9 +107,7 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --seed $(($N+42*$j)) \
         --clip_grad_value 1.0 \
         --save_best \
-        --d_mem $D_MEM \
-        --layers_attr gpt_neox.layers \
-        --act_on
+        # --act_on
         # --freeze_mem
         # --repeat_state
 done
