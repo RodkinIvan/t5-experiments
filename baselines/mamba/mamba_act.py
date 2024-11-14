@@ -31,8 +31,7 @@ class ACT_basic(nn.Module):
         self.p.bias.data.fill_(1) 
         self.threshold = 1 - 0.1
 
-    def forward(self, *args, state, inputs, fn, time_enc, pos_enc, max_hop,  encoder_output=None, **kwargs):
-        # init_hdd
+    def forward(self, *args, state, inputs, fn, max_hop,  encoder_output=None, **kwargs):
         ## [B, S]
         halting_probability = torch.zeros(inputs.shape[0],inputs.shape[1]).cuda()
         ## [B, S]
@@ -46,9 +45,6 @@ class ACT_basic(nn.Module):
         rest = None
         while( ((halting_probability<self.threshold) & (n_updates < max_hop)).byte().any()):
             # Add timing signal
-            # state = state + time_enc[:, :inputs.shape[1], :].type_as(inputs.data)
-            # state = state + pos_enc[:, step, :].unsqueeze(1).repeat(1,inputs.shape[1],1).type_as(inputs.data)
-
             p = self.sigma(self.p(state)).squeeze(-1)
             # Mask for inputs which have not halted yet
             still_running = (halting_probability < 1.0).float()
@@ -86,7 +82,6 @@ class ACT_basic(nn.Module):
                 if isinstance(state, tuple) and len(state) > 1:
                     rest = state[1:]
                     state = state[0]
-
             # update running part in the weighted state and keep the rest
             previous_state = ((state * update_weights.unsqueeze(-1)) + (previous_state * (1 - update_weights.unsqueeze(-1))))
             ## previous_state is actually the new_state at end of hte loop 
@@ -97,3 +92,60 @@ class ACT_basic(nn.Module):
             return previous_state, (remainders,n_updates)
         else:
             return (previous_state, *rest), (remainders, n_updates)
+        
+        
+        
+import torch
+import torch.nn as nn
+from transformers import MambaForCausalLM
+
+import torch
+import math
+
+
+class AdaptiveMambaForCausalLM(MambaForCausalLM):
+    def __init__(self, config):
+        super(AdaptiveMambaForCausalLM, self).__init__(config)
+        
+        # Flag for enabling ACT, and max_hop
+        self.use_act = config.use_act if hasattr(config, 'use_act') else False
+        self.max_hop = config.max_hop if hasattr(config, 'max_hop') else 4
+        
+        # Initialize ACT layer if enabled
+        if self.use_act:
+            self.act_fn = ACT_basic(config.hidden_size)
+
+    def forward(self, input_ids, labels=None, **kwargs):
+        # re-init remindes and updates
+        self.remainders = torch.zeros(1,)
+        self.n_updates = torch.zeros(1,)
+        self.segments_passed = torch.zeros(1,)
+        
+        x = self.backbone.embeddings(input_ids)
+        self.remainders = self.remainders.to(x.device)
+        self.n_updates = self.n_updates.to(x.device)
+        self.segments_passed = self.segments_passed.to(x.device)
+        if self.use_act:
+            x, (remainders, n_updates) = self.act_fn(
+                state=x,
+                inputs=x,
+                fn=lambda x: self.apply_layers(x),
+                max_hop=self.max_hop,
+            )
+            self.remainders = self.remainders + remainders # 1 - \sum(h_i); L' = L + tau * mean(reminders)
+            self.n_updates = self.n_updates + n_updates
+            self.segments_passed = self.segments_passed + 1
+        else:
+            x = self.apply_layers(x)
+
+        x = self.backbone.norm_f(x)
+        logits = self.lm_head(x)
+        return  {"logits": logits,
+                    "n_updates": self.n_updates,
+                    "remainders": self.remainders}
+
+    def apply_layers(self, x):
+        for layer in self.backbone.layers:
+            x = layer(x)
+        return x
+        

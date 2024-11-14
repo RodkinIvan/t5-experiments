@@ -111,7 +111,7 @@ parser.add_argument('--k2', type=int, default=-1, help='number of last segments 
 parser.add_argument('--freeze_model_weights', action='store_true', default=False,
                     help='Stop training all model weights except memory layers')
 
-parser.add_argument('--freeze_mem', action='store_true', default=False,
+parser.add_argument('--freeze_mem', action='store_true', default=None,
                     help='Freeze memory parameters in ARMT')
 parser.add_argument('--backbone_cpt', type=str, default=None, help='backbone model checkpoint path')
 parser.add_argument('--d_mem', type=int, default=None, help='number of rows in associative matrix')

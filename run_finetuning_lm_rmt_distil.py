@@ -91,8 +91,6 @@ parser.add_argument('--alpha_distil', type=float, default=None, help='')
 parser.add_argument('--input_size', type=int, default=None, help='maximal input size of the backbone model')
 parser.add_argument('--block_size', type=int, default=None, help='number of real tokens in block')
 parser.add_argument('--num_mem_tokens', type=int, default=None, help='number of memory tokens.')
-parser.add_argument('--d_mem', type=int, default=None, help='number of rows in associative matrix')
-parser.add_argument('--layers_attr', type=str, default=None, help='attribute of model, which contains layers')
 parser.add_argument('--n_heads', type=int, default=None, help='number of heads in associative matrix')
 parser.add_argument('--max_n_segments', type=int, default=1, help='maximal segment number')
 parser.add_argument('--max_val_segments', type=int, default=1, help='maximal segment number on validation')
@@ -149,6 +147,10 @@ parser.add_argument('--adapter_dropout', type=float, default=0.1, help='')
 parser.add_argument('--adapter_scale', type=float, default=4.0, help='')
 
 parser.add_argument('--report_to', type=str, default='wandb', help='')
+
+
+parser.add_argument('--d_mem', type=int, default=None, help='number of rows in associative matrix')
+parser.add_argument('--layers_attr', type=str, default=None, help='attribute of model, which contains layers')
 
 if __name__ == '__main__':
     args = parser.parse_args()
