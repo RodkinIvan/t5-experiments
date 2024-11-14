@@ -1,1 +1,0 @@
-{"_runtime":75.201145526,"val_loss":0.6263058185577393,"trainer/global_step":4999,"val_seq_acc":0,"train_token_acc":0.591478705406189,"epoch":99,"grad_norm":1.0605247020721436,"train_seq_acc":0,"_step":199,"_wandb":{"runtime":75},"lr":0.0010000000474974513,"train_loss":0.6282203197479248,"val_token_acc":0.5993262529373169,"_timestamp":1.7296749518005157e+09}

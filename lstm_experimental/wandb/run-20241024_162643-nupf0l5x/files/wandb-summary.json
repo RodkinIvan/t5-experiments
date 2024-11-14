@@ -1,1 +1,0 @@
-{"train_seq_acc":1,"train_token_acc":1,"_timestamp":1.7297731643098674e+09,"_step":306,"train_loss":7.382561761914985e-06,"epoch":0,"_runtime":360.637005487,"trainer/global_step":15349,"grad_norm":0.012850814498960972,"_wandb":{"runtime":361}}
