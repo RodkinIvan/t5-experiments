@@ -445,6 +445,10 @@ if __name__ == '__main__':
             if f'ce_loss_{i}' in data:
                 metrics[f'ce_loss_{i}'] = data[f'ce_loss_{i}'].mean().item()
 
+        if args.act_on:
+            metrics['n_updates'] = data['n_updates'].mean().item()
+            metrics['remainders'] = data['remainders'].mean().item()
+
         return metrics
 
     # acceleratems-appid:undefined
