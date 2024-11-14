@@ -1,8 +1,10 @@
 import os
 import json
 import argparse
+from pathlib import Path
 
-save_folder = "/home/cosmos/VScode Projects/coglab/NLP/pytorch-adaptive-computation-time/pytorch_adaptive_computation_time/associative-recurrent-memory-transformer/base_models/gptconfigs"
+home = Path.home()
+save_folder = f"{home}/rmt/wip/base_models/gptconfigs/"
 default_config = {
   "architectures": [
     "GPTNeoXForCausalLM"
@@ -43,5 +45,6 @@ config['num_attention_heads'] = int(args.num_attention_heads)
 config_name = f"neox_tiny_{args.num_hidden_layers}l{args.num_attention_heads}hd{args.hidden_size}"
 print(f'Saving config {config_name}')
 save_path = os.path.join(save_folder, f'{config_name}.json')
+os.makedirs(save_folder, exist_ok=True)
 with open(save_path, 'w') as f:
     json.dump(config, f)
