@@ -119,8 +119,6 @@ class AssociativeLayerWrapper(torch.nn.Module):
             )+ hidden_states
         out = self.layer(hidden_states, *args, **kwargs)
         if not self.generate_mode:
-            # reminder
-            # mem_tokens = out[0][:, :-self.num_mem_tokens]
             mem_tokens = out[0][:, -self.num_mem_tokens:]
             # mem_tokens = out[0]
             self.update_mem(mem_tokens)
@@ -271,17 +269,6 @@ class AssociativeMemoryCell(torch.nn.Module):
                 gating=gating
             )
             self.layers[i] = AssociativeLayerWrapper(**kw) if not act_on else AdaptiveAssociativeLayerWrapper(**kw)
-        # kw = dict(
-        #     layer=self.model, 
-        #     d_model=self.d_model, 
-        #     num_mem_tokens=self.num_mem_tokens, 
-        #     d_mem=self.d_mem,
-        #     correction=correction,
-        #     n_heads=n_heads,
-        #     use_denom=use_denom,
-        #     gating=gating
-        # )
-        # self.model = AssociativeLayerWrapper(**kw)
         self.create_memory(num_mem_tokens)
         self.wrap_pos = wrap_pos
         self.act_on = act_on

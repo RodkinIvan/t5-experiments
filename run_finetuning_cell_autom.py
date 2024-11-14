@@ -313,9 +313,6 @@ if __name__ == '__main__':
             mem_cell_args['correction'] = False
 
         
-        print(mem_cell_args)
-        import os 
-        print(os.getcwd())
         cell = memory_cell_cls(**mem_cell_args)
 
         model = recurrent_wrapper_cls(cell, 
