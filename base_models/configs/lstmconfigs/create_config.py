@@ -12,7 +12,7 @@ default_config = {
   "model_type": "gpt_neox",
   "embedding_dim": 8,
   "hidden_size": 128,
-  "num_layers": 1,
+  "num_layers": 4,
   "lr": 0.001,
   "vocab_size": 128,
   "intermediate_size": 128, 
@@ -29,7 +29,10 @@ default_config = {
   "layer_norm_eps": 1e-5,
   "use_cache": True,
   "tie_word_embeddings": False,
-  "use_parallel_residual": True
+  "use_parallel_residual": True,
+  "act_on": True,
+  "max_hop": 4,
+  "time_penalty": 3e-4
 }
 
 parser = argparse.ArgumentParser()

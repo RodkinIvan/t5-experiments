@@ -6,262 +6,65 @@ import pytorch_lightning as pl
 import pandas as pd
 from pytorch_lightning.loggers import WandbLogger
 from munch import Munch
-# token_mapping = {
-#     '0': 0,
-#     '1': 1,
-#     '=': 2,       # Separator between input and target
-#     '<PAD>': 3    # Padding token
-# }
-# vocab_size = len(token_mapping)
+
+from modeling_lstm.act_utils import AdaptiveLayerWrapper
+
 
 # PyTorch Lightning Module to train the Double LSTM
-class DoubleLSTMModel(pl.LightningModule):
+class DoubleLSTMModel(nn.Module):
     def __init__(self, config):
         super(DoubleLSTMModel, self).__init__()
-        self.save_hyperparameters()
 
         self.config = config.to_dict()
         print(config)
-        vocab_size = self.config['vocab_size']
-        embedding_dim = self.config['embedding_dim']
-        hidden_size = self.config['hidden_size']
-        lr = self.config['lr']
-        num_layers = self.config['num_layers']
+        self.vocab_size = self.config['vocab_size']
+        self.embedding_dim = self.config['embedding_dim']
+        self.hidden_size = self.config['hidden_size']
+        
+        self.num_layers = self.config['num_layers']
+        self.act_on = self.config['act_on']
 
-        # self.token_mapping = token_mapping
+        self.embedding = nn.Embedding(self.vocab_size, self.embedding_dim)
+        self.lstm = nn.ModuleList([nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=1, batch_first=True) for _ in range(self.num_layers)])
 
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm1 = nn.LSTM(embedding_dim, hidden_size, num_layers=num_layers, batch_first=True)
+        if self.act_on:
+            self.max_hop = self.config['max_hop']
+            for i in range(len(self.lstm)):
+                self.lstm[i] = AdaptiveLayerWrapper(self.lstm[i], self.hidden_size, self.max_hop)
+            
         self.activation = nn.ReLU()
-        self.lstm2 = nn.LSTM(hidden_size, hidden_size, num_layers=num_layers, batch_first=True)
-        self.lstm3 = nn.LSTM(hidden_size, hidden_size, num_layers=num_layers, batch_first=True)
-        self.lstm4 = nn.LSTM(hidden_size, hidden_size, num_layers=num_layers, batch_first=True)
 
-        self.fc = nn.Linear(hidden_size, vocab_size)
-        self.lr = lr
-        self.loss_fn = nn.CrossEntropyLoss() #ignore_index=self.token_mapping['<PAD>'])  # Ignore padding index
+        self.fc = nn.Linear(self.hidden_size, self.vocab_size)
+        self.loss_fn = nn.CrossEntropyLoss() 
 
     def forward(self, x):
+        # print(x[0], x[0].shape)
         embedded = self.embedding(x)  # Shape: (batch_size, seq_len, embedding_dim)
        
-        output1, _ = self.lstm1(embedded)
+  
+        self.remainders = []
+        self.n_updates = []
+        print(self.num_layers)
+        for i in range(self.num_layers):
 
-        activated_output = self.activation(output1)
-    
-        output2, _ = self.lstm2(activated_output)
+            embedded, (remainders, n_updates) = self.lstm[i](embedded)
+            print(embedded)
+            embedded = self.activation(embedded[0])
+            self.remainders.append(remainders)
+            self.n_updates.append(n_updates)
+        
+        print(len(self.remainders))
+        # self.remainders = torch.mean(torch.stack(self.remainders, dim=1), dim=1)
+        # self.n_updates = torch.mean(torch.stack(self.n_updates, dim=1), dim=1)
 
-        activated_output = self.activation(output2)
-
-        output3, _ = self.lstm3(activated_output)
-
-        activated_output = self.activation(output3)
-
-        output4, _ = self.lstm4(activated_output)
+        # self.n_updates = self.n_updates.detach().cpu()
+        # self.remainders = self.remainders.detach().cpu()
 
 
-        logits = self.fc(output4)  # Shape: (batch_size, seq_len, vocab_size)
-        out = Munch(logits=logits)
+        logits = self.fc(embedded)  # Shape: (batch_size, seq_len, vocab_size)
+        out = Munch(logits=logits, n_updates=self.n_updates, remainders=self.remainders)
+        # print(out.logits[0], out.logits[0].shape)
         return out
     
 
-    def training_step(self, batch, batch_idx):
-        x = batch['input_ids']
-        y = batch['labels']
-        label_length = y.shape[1]
-        input_length = x.shape[1]
-
-        logits = self(x)
-
-         # Calculate where the Y sequence starts
-        batch_size = logits.size(0)
-        # logits_y = []
-        # y_ground = []
-        
-        # for i in range(batch_size):
-        #     # Start of Y is after X1 + '+' + X2 + '=' which is given by (input_length - len_y)
-        #     y_start_idx = input_lengths[i] - y_lengths[i]
-        #     y_end_idx = input_lengths[i]  # End at the full sequence length
-
-        #     # Extract logits for the Y sequence
-        #     logits_y.append(logits[i, y_start_idx-1:y_end_idx-1, :])
-        #     y_ground.append(y[i, :y_lengths[i]])
-
-        logits_y = logits[:, -label_length-1:-1, :]
-
-        logits_y_flat = torch.flatten(logits_y, end_dim=-2)  
-        # Flatten the ground truth Y
-        y_flat = torch.flatten(y)  
-        
-      
-
-        # Calculate loss only on valid tokens (non-padding)
-        loss = self.loss_fn(logits_y_flat, y_flat)
-
-        # Calculate token-level accuracy
-        preds = logits_y_flat.argmax(dim=-1) 
-        correct_tokens = (preds == y_flat)
-        token_acc = correct_tokens.float().mean()
-
-        # Calculate sequence-level accuracy
-        seq_correct = []
-        for i in range(batch_size):
-            preds_i = logits_y[i].argmax(dim=-1)  # Predicted Y sequence for sample i
-            y_i = y[i]  # Ground truth Y sequence for sample i
-            is_correct = torch.equal(preds_i, y_i)  # Check if sequences are identical
-            seq_correct.append(is_correct)
-
-        seq_acc = torch.tensor(seq_correct, dtype=torch.float).mean()
-
-        # Log the gradient norms
-        total_grad_norm = 0
-        for p in self.parameters():
-            if p.grad is not None:
-                param_norm = p.grad.data.norm(2)
-                total_grad_norm += param_norm.item() ** 2
-        total_grad_norm = total_grad_norm ** 0.5
-        self.log('grad_norm', total_grad_norm)
-
-        # Log metrics
-        self.log('train_loss', loss)
-        self.log('train_token_acc', token_acc)
-        self.log('train_seq_acc', seq_acc)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        # x, y, input_lengths, y_lengths = batch.
-        x = batch['input_ids']
-        y = batch['labels']
-        label_length = y.shape[1]
-        input_length = x.shape[1]
-
-        logits = self(x)
-
-        # Calculate where the Y sequence starts
-        batch_size = logits.size(0)
-        # logits_y = []
-        # y_ground = []
-        
-
-        logits_y = logits[:, -label_length-1:-1, :]
-
-        # for i in range(batch_size):
-        #     # Start of Y is aftor i in range(batch_size):
-        #     # Start of Y is after X1 + '+' + X2 + '=' which is given by (input_length - len_y)
-        #     y_start_idx = input_lengths[i] - y_lengths[i]
-        #     y_end_idx = input_lengths[i]  # End at the full sequence length
-
-        #     # Extract logits for the Y sequence
-        #     logits_y.append(logits[i, y_start_idx-1:y_end_idx-1, :])
-        #     y_ground.append(y[i, :y_lengths[i]])er X1 + '+' + X2 + '=' which is given by (input_length - len_y)
-        #     y_start_idx = input_lengths[i] - y_lengths[i]
-        #     y_end_idx = input_lengths[i]  # End at the full sequence length
-
-        #     # Extract logits for the Y sequence
-        #     logits_y.append(logits[i, y_start_idx-1:y_end_idx-1, :])
-        #     y_ground.append(y[i, :y_lengths[i]])
-
-        # Concatenate the logits for Y across the batch
-        
-        logits_y_flat = torch.flatten(logits_y, end_dim=-2)  
-        # Flatten the ground truth Y
-        y_flat = torch.flatten(y)  
-        
-      
-
-        # Calculate loss only on valid tokens (non-padding)
-        loss = self.loss_fn(logits_y_flat, y_flat)
-
-        # Calculate token-level accuracy
-        preds = logits_y_flat.argmax(dim=-1)  
-        correct_tokens = (preds == y_flat)
-        token_acc = correct_tokens.float().mean()
-
-        # Calculate sequence-level accuracy
-        seq_correct = []
-        for i in range(batch_size):
-            preds_i = logits_y[i].argmax(dim=-1)  # Predicted Y sequence for sample i
-            y_i = y[i]  # Ground truth Y sequence for sample i
-            is_correct = torch.equal(preds_i, y_i)  # Check if sequences are identical
-            seq_correct.append(is_correct)
-
-        seq_acc = torch.tensor(seq_correct, dtype=torch.float).mean()
-        
-
-        # Log metrics
-        self.log('val_loss', loss)
-        self.log('val_token_acc', token_acc)
-        self.log('val_seq_acc', seq_acc)
-        # self.log('lr', self.optimizers().param_groups[0]['lr'])
-
-
-    def test_step(self, batch, batch_idx):
-        # x, y, input_lengths, y_lengths = batch.
-        x = batch['input_ids']
-        y = batch['labels']
-        label_length = y.shape[1]
-        input_length = x.shape[1]
-
-        logits = self(x)
-
-        # Calculate where the Y sequence starts
-        batch_size = logits.size(0)
-        # logits_y = []
-        # y_ground = []
-        
-
-        logits_y = logits[:, -label_length-1:-1, :]
-
-        # for i in range(batch_size):
-        #     # Start of Y is aftor i in range(batch_size):
-        #     # Start of Y is after X1 + '+' + X2 + '=' which is given by (input_length - len_y)
-        #     y_start_idx = input_lengths[i] - y_lengths[i]
-        #     y_end_idx = input_lengths[i]  # End at the full sequence length
-
-        #     # Extract logits for the Y sequence
-        #     logits_y.append(logits[i, y_start_idx-1:y_end_idx-1, :])
-        #     y_ground.append(y[i, :y_lengths[i]])er X1 + '+' + X2 + '=' which is given by (input_length - len_y)
-        #     y_start_idx = input_lengths[i] - y_lengths[i]
-        #     y_end_idx = input_lengths[i]  # End at the full sequence length
-
-        #     # Extract logits for the Y sequence
-        #     logits_y.append(logits[i, y_start_idx-1:y_end_idx-1, :])
-        #     y_ground.append(y[i, :y_lengths[i]])
-
-        # Concatenate the logits for Y across the batch
-        
-        logits_y_flat = torch.flatten(logits_y, end_dim=-2)  
-        # Flatten the ground truth Y
-        y_flat = torch.flatten(y)  
-        
-      
-
-        # Calculate loss only on valid tokens (non-padding)
-        loss = self.loss_fn(logits_y_flat, y_flat)
-
-        # Calculate token-level accuracy
-        preds = logits_y_flat.argmax(dim=-1)  
-        correct_tokens = (preds == y_flat)
-        token_acc = correct_tokens.float().mean()
-
-        # Calculate sequence-level accuracy
-        seq_correct = []
-        for i in range(batch_size):
-            preds_i = logits_y[i].argmax(dim=-1)  # Predicted Y sequence for sample i
-            y_i = y[i]  # Ground truth Y sequence for sample i
-            is_correct = torch.equal(preds_i, y_i)  # Check if sequences are identical
-            seq_correct.append(is_correct)
-
-        seq_acc = torch.tensor(seq_correct, dtype=torch.float).mean()
-        
-
-        # Log metrics
-        self.log('test_loss', loss)
-        self.log('test_token_acc', token_acc)
-        self.log('test_seq_acc', seq_acc)
-        # self.log('lr', self.optimizers().param_groups[0]['lr'])
-
-
-
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.lr)
-
+ 

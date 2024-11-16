@@ -133,8 +133,9 @@ class RecurrentWrapper(torch.nn.Module):
             remainders = []
             n_updates = []
             for o in cell_outputs:
-                    remainders.extend(o['remainders'])
-                    n_updates.extend(o['n_updates'])
+                # print("aaaaaaa", o['remainders'])
+                remainders.extend(o['remainders'])
+                n_updates.extend(o['n_updates'])
             remainders = torch.mean(torch.stack(remainders, dim=0))
             n_updates = torch.mean(torch.stack(n_updates, dim=0))
             out['n_updates'] = n_updates.detach().cpu()
