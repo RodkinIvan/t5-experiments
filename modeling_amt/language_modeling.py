@@ -587,7 +587,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                 attention_mask, hidden_states, cache_position, None, False
             )
 
-            out, (n_updates, remainders) = self.act(
+            out, (remainders, n_updates) = self.act(
                 state=hidden_states,
                 inputs=hidden_states,
                 fn_no_update=lambda *args, **kwargs: self.apply_layers(*args, **kwargs, update_mem=False),
