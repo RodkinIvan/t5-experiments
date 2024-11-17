@@ -1,56 +1,57 @@
-# Recurrent Memory Transformer implementation compatible with Hugging Face models
+# Adaptive Computation Time Investigation
+
+This project explores the integration of Adaptive Computation Time (ACT) into various sequential models, including LSTM, Transformers, Universal Transformers (UT), Mamba, and Associative Recurrent Memory Transformer (ARMT). The goal is to dynamically adjust computational steps based on input complexity, enhancing efficiency and performance on diverse tasks.
 
 
-RMT is a memory-augmented segment-level recurrent Transformer. It achieves state-of-the art results on Hyperpartisan dataset and beats Transformer-XL on algorithmic tasks and LM with limited input and memory size.
+## Datasets
 
->[paper](https://arxiv.org/abs/2304.11062) Scaling Transformer to 1M tokens and beyond with RMT
+We evaluate the models on the following datasets:
 
->[paper](https://arxiv.org/abs/2207.06881) [code](https://github.com/booydar/LM-RMT) Recurrent Memory Transformer
+| Dataset | Description | Train size | Val. size | Test size |
+| --- | --- | --- | --- | --- |
+| [1D cellular automata](https://huggingface.co/datasets/irodkin/1dCA_r2s20T20) | Predicts the next state of a 1D cellular automaton based on its current state | 950,000 | 50,000 | 100,000 |
+| [Binary copy](https://huggingface.co/datasets/steeldream/binary) | Copies the input sequence to the output | 800,000 | 100,000 | 100,000 |
+| [Binary reverse](https://huggingface.co/datasets/steeldream/binary) | Reverses the input sequence | 800,000 | 100,000 | 100,000 |
+| [Binary addition](https://huggingface.co/datasets/steeldream/addition_binary) | Adds two binary numbers | 800,000 | 100,000 | 100,000 |
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/booydar/t5-experiments/blob/framework_accel/notebooks/rmt_demo_lm.ipynb) Example: LM with RMT
+We preprocess the last three datasets in the `collate_fn` function to define the binary copy, reverse, and addition tasks
 
-Recurrent Memory Transformer is implemented as follows:
 
-![**RMT**](img/RMT_scheme.png?raw=True)
+# Models
 
-We implement our memory mechanism with no changes to Transformer model by adding special memory tokens to the input sequence. The model is trained to control both memory operations and sequence representations processing.
+We evaluated the following models on all datasets:
+
+1. LSTM
+      - Architecture: 4-layer LSTM for all tasks.
+2. Transformer
+      - Backbone: GPT-Neox.
+      - Architecture: 1 layer for Copy and Reverse tasks, 4 layers for Addition and Cellular Automata.
+3. Mamba
+      - Architecture: 1 layer for Copy and Reverse tasks, 4 layers for Addition and Cellular Automata.
+4. Associative Recurrent Memory Transformer (ARMT)
+      - Backbone: GPT-Neox.
+      - Architecture: 1 layer for Copy and Reverse tasks, 4 layers for Addition and Cellular Automata.
+
+Each model was tested with and without Adaptive Computation Time (ACT) around every layer.
+
+## Project structure
+
+TODO
 
 ## Installation
+
+Clone the repository to your local machine.
+
 ```bash
-pip install -e .
+git clone https://github.com/RodkinIvan/associative-recurrent-memory-transformer.git
+cd associative-recurrent-memory-transformer
 ```
-This command will install `lm_experiments_tools` with only required packages for Trainer and tools.
 
-`lm_experiments_tools` Trainer supports gradient accumulation, logging to tensorboard, saving the best models
-based on metrics, custom metrics and data transformations support.
+This project requires Python 3.9, PyTorch >= 2.3.1 and CUDA >= 12.1. We recommend using `conda` to create a virtual environment and install the required packages.
 
-### Install requirements for all experiments
-Full requirements for all experiments are specified in requirements.txt. Install requirements after cloning the repo:
 ```bash
+conda create -n <env_name> python=3.9
+conda activate <env_name>
+conda install nvidia/label/cuda-12.1.0::cuda
 pip install -r requirements.txt
-```
-
-
-## Citation
-If you find our work useful, please cite the RMT papers:
-```
-@inproceedings{
-        bulatov2022recurrent,
-        title={Recurrent Memory Transformer},
-        author={Aydar Bulatov and Yuri Kuratov and Mikhail Burtsev},
-        booktitle={Advances in Neural Information Processing Systems},
-        editor={Alice H. Oh and Alekh Agarwal and Danielle Belgrave and Kyunghyun Cho},
-        year={2022},
-        url={https://openreview.net/forum?id=Uynr3iPhksa}
-}
-```
-```
-@misc{bulatov2023scaling,
-      title={Scaling Transformer to 1M tokens and beyond with RMT}, 
-      author={Aydar Bulatov and Yuri Kuratov and Mikhail S. Burtsev},
-      year={2023},
-      eprint={2304.11062},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
-}
 ```
