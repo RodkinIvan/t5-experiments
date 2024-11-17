@@ -105,6 +105,7 @@ parser.add_argument('--relative_step', action='store_true', default=False,
 parser.add_argument('--warmup_init', action='store_true', default=False,
                     help='Adafactor warmup_init (default: False)')
 parser.add_argument('--time_penalty', type=float, default=3e-4, help='Time penalty in ACT')
+parser.add_argument('--act_type', type=str, default='layer', help='ACT type')
 
 
 if __name__ == '__main__':
