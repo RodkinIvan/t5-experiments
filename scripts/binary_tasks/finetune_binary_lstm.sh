@@ -4,7 +4,6 @@ NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
 cd ../..
-export WANDB_PROJECT=lstm
 CUBLAS_WORKSPACE_CONFIG=:4096:2
 CUDA_LAUNCH_BLOCKING=1
 TASK_NAME=addition_binary
@@ -14,15 +13,18 @@ RECURRENT_WRAPPER=baselines.dummy.language_modeling:RecurrentWrapper
 BACKBONE_CLS=modeling_lstm.language_modeling:DoubleLSTMModel
 
 
-DATASET_NAME=ca
-# DATASET_NAME=addition_binary
+# DATASET_NAME=ca
+DATASET_NAME=addition_binary
 # DATASET_NAME=reverse_binary
+# DATASET_NAME=copy_binary
+
+export WANDB_PROJECT=$DATASET_NAME
 
 ITERS=30000
 TBS=256
 
 MAX_HOP=4
-ACT_TYPE=layer
+ACT_TYPE=model
 TIME_PENALTY=3e-4
 
 MAX_N_SEGMENTSS=(2)
@@ -115,6 +117,7 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --clip_grad_value 1.0 \
         --save_best \
         --act_on \
+        --act_type $ACT_TYPE \
         --max_hop $MAX_HOP  \
         --time_penalty $TIME_PENALTY 
 

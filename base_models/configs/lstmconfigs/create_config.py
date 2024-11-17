@@ -31,6 +31,7 @@ default_config = {
   "tie_word_embeddings": False,
   "use_parallel_residual": True,
   "act_on": True,
+  "act_type": "model",
   "max_hop": 4,
   "time_penalty": 3e-4
 }

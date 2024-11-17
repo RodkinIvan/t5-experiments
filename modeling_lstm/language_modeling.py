@@ -23,9 +23,13 @@ class DoubleLSTMModel(nn.Module):
         
         self.num_layers = self.config['num_layers']
         self.act_on = self.config['act_on']
+        self.act_type = self.config['act_type']
 
         self.embedding = nn.Embedding(self.vocab_size, self.embedding_dim)
-        self.lstm = nn.ModuleList([nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=1, batch_first=True) for _ in range(self.num_layers)])
+        if self.act_type == "layer":
+            self.lstm = nn.ModuleList([nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=1, batch_first=True) for _ in range(self.num_layers)])
+        else:
+            self.lstm = nn.ModuleList([nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=self.num_layers, batch_first=True)])
 
         if self.act_on:
             self.max_hop = self.config['max_hop']
@@ -44,16 +48,21 @@ class DoubleLSTMModel(nn.Module):
   
         self.remainders = []
         self.n_updates = []
-        print(self.num_layers)
-        for i in range(self.num_layers):
 
-            embedded, (remainders, n_updates) = self.lstm[i](embedded)
-            print(embedded)
-            embedded = self.activation(embedded[0])
-            self.remainders.append(remainders)
-            self.n_updates.append(n_updates)
+        print(self.num_layers)
+
+        for i in range(len(self.lstm)):
+            if self.act_on:
+                embedded, (remainders, n_updates) = self.lstm[i](embedded)
+                # embedded = self.activation(embedded[0])
+                self.remainders.append(remainders)
+                self.n_updates.append(n_updates)
+            else:
+                embedded, _ = self.lstm[i](embedded)
+                # embedded = self.activation(embedded)
+
+     
         
-        print(len(self.remainders))
         # self.remainders = torch.mean(torch.stack(self.remainders, dim=1), dim=1)
         # self.n_updates = torch.mean(torch.stack(self.n_updates, dim=1), dim=1)
 
@@ -61,7 +70,7 @@ class DoubleLSTMModel(nn.Module):
         # self.remainders = self.remainders.detach().cpu()
 
 
-        logits = self.fc(embedded)  # Shape: (batch_size, seq_len, vocab_size)
+        logits = self.fc(embedded[0])  # Shape: (batch_size, seq_len, vocab_size)
         out = Munch(logits=logits, n_updates=self.n_updates, remainders=self.remainders)
         # print(out.logits[0], out.logits[0].shape)
         return out
