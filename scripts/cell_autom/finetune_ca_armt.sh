@@ -20,7 +20,7 @@ TBS=256
 
 MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
-SHIFTS=(3)
+SHIFTS=(2)
 LRS=(3e-4)
 BSS=(128)
 
@@ -29,7 +29,7 @@ INPUT_TOKENS=20
 D_MEM=32
 N_HEADS=1
 
-ACT_TYPE=layer
+ACT_TYPE=model
 MAX_HOP=2
 
 DIM=128
@@ -38,7 +38,7 @@ NUM_LAYERS=4
 cd base_models/gptconfigs
 python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --num_attention_heads $NUM_LAYERS
 cd ../..
-MODEL_CFG=/home/ivan.rodkin/lab/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
+MODEL_CFG=~/rmt/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
 
 
 

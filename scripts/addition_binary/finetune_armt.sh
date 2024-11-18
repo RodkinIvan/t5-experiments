@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
@@ -46,7 +46,7 @@ cd ../..
 MODEL_CFG=~/rmt/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
 
 
-for N in 5
+for N in 1
 do
 
 
@@ -103,16 +103,13 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --data_n_workers 2 \
         --log_interval 50 --valid_interval 250 \
         --show_valid_examples 5 \
-        --early_stopping_patience 50 \
+        --early_stopping_patience 10000 \
         --seed $(($N+42*$j)) \
         --clip_grad_value 1.0 \
         --save_best \
         --d_mem $D_MEM \
         --layers_attr $LAYERS_ATTR \
-        --num_mem_tokens $MEMORY_SIZE \
-        --act_on \
-        --max_hop $MAX_HOP \
-        --act_type $ACT_TYPE
+        --num_mem_tokens $MEMORY_SIZE
 done
 done
 done

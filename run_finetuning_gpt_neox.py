@@ -299,7 +299,7 @@ if __name__ == '__main__':
     )
     test_dataloader = DataLoader(
         test_dataset, batch_size=per_worker_batch_size,
-        collate_fn=collate_fn, **kwargs, drop_last=True
+        collate_fn=lambda x: collate_fn(x, valid=True), **kwargs, drop_last=True
     )
 
     if args.valid_interval is None:
