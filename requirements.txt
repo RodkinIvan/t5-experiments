@@ -14,6 +14,6 @@ ninja
 tqdm
 lightning
 -i https://download.pytorch.org/whl/cu121
-torch
+torch==2.3.1
 torchvision
-triton==2.2.0
+triton==2.3.1
