@@ -2,4 +2,3 @@
 .gitignore
 wandb/
 base_models/
-scripts/
