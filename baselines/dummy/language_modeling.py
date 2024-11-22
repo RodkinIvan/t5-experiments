@@ -6,6 +6,9 @@ from munch import Munch
 
 class MemoryCell(torch.nn.Module):
     def __init__(self, base_model,
+                act_on=False,
+                max_hop=4,
+                act_type='layer'
                  ):
         super().__init__()
         self.model = base_model
@@ -133,9 +136,8 @@ class RecurrentWrapper(torch.nn.Module):
             remainders = []
             n_updates = []
             for o in cell_outputs:
-                # print("aaaaaaa", o['remainders'])
-                remainders.extend(o['remainders'])
-                n_updates.extend(o['n_updates'])
+                    remainders.extend(o['remainders'])
+                    n_updates.extend(o['n_updates'])
             remainders = torch.mean(torch.stack(remainders, dim=0))
             n_updates = torch.mean(torch.stack(n_updates, dim=0))
             out['n_updates'] = n_updates.detach().cpu()

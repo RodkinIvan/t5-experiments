@@ -12,10 +12,10 @@ RECURRENT_WRAPPER=baselines.dummy.language_modeling:RecurrentWrapper
 BACKBONE_CLS=modeling_lstm.language_modeling:DoubleLSTMModel
 
 
-# DATASET_NAME=ca
+DATASET_NAME=ca
 # DATASET_NAME=addition_binary
 # DATASET_NAME=reverse_binary
-DATASET_NAME=copy_binary
+# DATASET_NAME=copy_binary
 
 export WANDB_PROJECT=$DATASET_NAME
 TASK_NAME=$DATASET_NAME
@@ -27,20 +27,20 @@ MAX_HOP=4
 ACT_TYPE=layer
 TIME_PENALTY=3e-4
 
-MAX_N_SEGMENTSS=(2)
-MAX_VAL_SEGMENTSS=(2)
+MAX_N_SEGMENTSS=(10)
+MAX_VAL_SEGMENTSS=(10)
 SHIFTS=(1)
 LRS=(1e-3)
-BSS=(64)
+BSS=(256)
 
-INPUT_TOKENS=40
+INPUT_TOKENS=20
 
 DIM=128
 EMBED_DIM=128
-NUM_LAYERS=1
+NUM_LAYERS=4
 
 cd base_models/configs/lstmconfigs
-python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --embedding_dim $EMBED_DIM
+python create_config.py --hidden_size $DIM --num_layers $NUM_LAYERS --embedding_dim $EMBED_DIM
 cd ../../..
 pwd=$(pwd)
 echo $pwd
@@ -79,7 +79,7 @@ do
 # if [[ j -gt 0 ]]
 # then
 #     PREV_SEQ_LEN=$(((INPUT_SIZE)*${MAX_N_SEGMENTSS[j-1]}))
-#     MODEL_CPT=../runs/lm_long/amt/${TASK_NAME}/$MODEL_NAME/lr${LRS[j-1]}_${SCHEDULER}_dmem${D_MEM}_${PREV_SEQ_LEN}-${MAX_N_SEGMENTSS[j-1]}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N 
+#     MODEL_CPT=../runs/lm_long/lstm/${TASK_NAME}/$MODEL_NAME/lr${LRS[j-1]}_${SCHEDULER}_dmem${D_MEM}_${PREV_SEQ_LEN}-${MAX_N_SEGMENTSS[j-1]}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N 
 # else
 #     MODEL_CPT=None
 # fi
@@ -87,12 +87,10 @@ MODEL_CPT=None
 
 echo RUNNING: TASK_NAME SRC_LEN MODEL_NAME MODEL_CLS N_SEG MEMORY_SIZE INPUT_SEQ_LEN LR N
 echo RUNNING: $TASK_NAME $SRC_LEN $MODEL_NAME $BACKBONE_CLS $MAX_N_SEGMENTS $MEMORY_SIZE $INPUT_SEQ_LEN $LR $N
-accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29501 run_finetuning_lstm.py \
+accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29502 run_finetuning_cell_autom.py \
         --task_name $TASK_NAME \
         --model_path ../runs/lm_long/lstm/${TASK_NAME}/$MODEL_NAME/lr${LR}_${SCHEDULER}_dmem${D_MEM}_${INPUT_SEQ_LEN}-${MAX_N_SEGMENTS}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N \
         --model_cfg $MODEL_CFG \
-        --dataset_name $DATASET_NAME \
-        --model_type $MODEL_TYPE \
         --memory_cell_cls $MEMORY_CELL \
         --recurrent_wrapper_cls $RECURRENT_WRAPPER \
         --model_cls $BACKBONE_CLS \
@@ -115,11 +113,11 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --early_stopping_patience 15892245 \
         --seed $(($N+42*$j)) \
         --clip_grad_value 1.0 \
-        --save_best 
-        # --act_on \
-        # --act_type $ACT_TYPE \
-        # --max_hop $MAX_HOP  \
-        # --time_penalty $TIME_PENALTY 
+        --save_best \
+        --act_on \
+        --act_type $ACT_TYPE \
+        --max_hop $MAX_HOP  \
+        --time_penalty $TIME_PENALTY 
 
 done
 done

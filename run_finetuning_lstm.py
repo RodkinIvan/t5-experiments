@@ -192,10 +192,10 @@ if __name__ == '__main__':
         return addition_collate_fn
 
 
-
+    
     def copy_collate_fn(batch, min_length=5, valid=False, reverse=False):
         batch_array_size = args.valid_array_size if valid else random.randint(min_length, args.train_array_size) 
-
+        print(batch_array_size)
         for i, b in enumerate(batch):
             X1 = b['input_ids'][:batch_array_size]
             X2 = X1[::-1] if reverse else X1
@@ -369,7 +369,7 @@ if __name__ == '__main__':
 
     # for encoder only classification
     def keep_for_metrics_fn(batch, output):
-        print(output.keys())
+        # print(output.keys())
         data = {}
         data['labels'] = batch['labels']
         data['labels_mask'] = batch['labels_mask']

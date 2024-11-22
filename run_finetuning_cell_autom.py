@@ -273,6 +273,12 @@ if __name__ == '__main__':
     logger.info(f'Using model class: {model_cls}')
     if not args.from_pretrained:
         model_cfg = AutoConfig.from_pretrained(args.model_cfg)
+        if 'lstm' in args.model_path:
+            model_cfg = model_cfg.to_dict()
+            model_cfg['act_on'] = args.act_on
+            model_cfg['max_hop'] = args.max_hop
+            model_cfg['act_type'] = args.act_type
+            model_cfg['time_penalty'] = args.time_penalty
         model = model_cls(config=model_cfg)
     else:
         logger.info(f'Loading pretrained model: {args.from_pretrained}')
@@ -323,6 +329,7 @@ if __name__ == '__main__':
             mem_cell_args['correction'] = False
 
         
+
         cell = memory_cell_cls(**mem_cell_args)
 
         model = recurrent_wrapper_cls(cell, 
@@ -457,12 +464,16 @@ if __name__ == '__main__':
 
     ### booydar
     batch_metrics_fn = lambda _, y: {key: y[key] for key in y.keys() if (('loss' in key) or ('!log' in key))}
+
+    fwd_kwargs = dict()
+    if 'armt' in args.model_path:
+        fwd_kwargs['output_only_last_segment'] = True
     trainer = Trainer(args, accelerator, model, optimizer, train_dataloader, valid_dataloader,
                       keep_for_metrics_fn=keep_for_metrics_fn, metrics_fn=metrics_fn,
                       ###booydar
                       batch_metrics_fn=batch_metrics_fn,
                       stop_metric_condition=lambda m: m >= args.desired_metric,
-                      forward_kwargs={'output_only_last_segment': True}
+                      forward_kwargs=fwd_kwargs
                       )
 
     # try:

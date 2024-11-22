@@ -61,6 +61,7 @@ parser.add_argument('--prediction_shift', type=int, default=1, help='num_timeste
 parser.add_argument('--repeat_state', action='store_true', default=False,
                     help='repeat state in the input so the input look like: [s0, s1, s1, s2, s2, s3...]')
 parser.add_argument('--dataset_name', type=str, default="ca", help="path to saved datasets")
+parser.add_argument('--sample_length', action='store_true', default=False, help='sample input length')
 parser.add_argument('--segment_size', type=int, default=128, help='number of useful tokens in a segment')
 parser.add_argument('--d_mem', type=int, default=None, help='number of rows in associative matrix')
 parser.add_argument('--layers_attr', type=str, default=None, help='attribute of model, which contains layers')
@@ -139,6 +140,7 @@ if __name__ == '__main__':
 
     kwargs = {'pin_memory': True, 'num_workers': args.data_n_workers}
     logger.info(f'preparing dataset for: {args.task_name}')
+    logger.info(f'sampling the length of the input: {args.sample_length}')
 
     with accelerator.main_process_first():
         train_dataset = load_dataset(dataset_path, split='train')
@@ -155,8 +157,8 @@ if __name__ == '__main__':
 
     prepare_run(args, logger, logger_fmt)
 
-    def copy_collate_fn(batch, min_length=5, valid=False, reverse=False):
-        batch_array_size = args.valid_array_size if valid else random.randint(min_length, args.train_array_size) 
+    def copy_collate_fn(batch, min_length=5, array_size=40, sample_length=False, reverse=False):
+        batch_array_size = random.randint(min_length, array_size) if sample_length else array_size
 
         for i, b in enumerate(batch):
             X1 = b['input_ids'][:batch_array_size]
@@ -187,13 +189,12 @@ if __name__ == '__main__':
         }
         return collated
 
-    def reverse_collate_fn(batch, min_length=5, valid=False):
-        return copy_collate_fn(batch, min_length=min_length, valid=valid, reverse=True)
-    
-    
+    def reverse_collate_fn(batch, min_length=5, array_size=40, sample_length=False):
+        return copy_collate_fn(batch, min_length, array_size, sample_length, reverse=True)
+        
     def addition_collate_fn_with_base(base):
-        def addition_collate_fn(batch, min_length=5, valid=False):
-            batch_array_size = args.valid_array_size if valid else random.randint(min_length, args.train_array_size) 
+        def addition_collate_fn(batch, min_length=5, array_size=40, sample_length=False):
+            batch_array_size = array_size if sample_length else random.randint(min_length, array_size) 
             
             def perform_addition(X1, X2):
                 Y = [0] * (batch_array_size + 1)
@@ -236,7 +237,6 @@ if __name__ == '__main__':
             return collated
         return addition_collate_fn
  
-
     def ca_collate_fn(batch, valid=False):
         batch_array_size = args.valid_array_size if valid else args.train_array_size
         for i, b in enumerate(batch):
@@ -291,15 +291,18 @@ if __name__ == '__main__':
 
     train_dataloader = DataLoader(
         train_dataset, batch_size=per_worker_batch_size, generator=train_rnd_generator,
-        collate_fn=collate_fn, **kwargs, drop_last=True
+        collate_fn=lambda x: collate_fn(x, sample_length=args.sample_length, array_size=args.train_array_size),
+        **kwargs, drop_last=True
     )
     valid_dataloader = DataLoader(
         valid_dataset, batch_size=per_worker_batch_size,
-        collate_fn=lambda x: collate_fn(x, valid=True), **kwargs, drop_last=True
+        collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
+        **kwargs, drop_last=True
     )
     test_dataloader = DataLoader(
         test_dataset, batch_size=per_worker_batch_size,
-        collate_fn=collate_fn, **kwargs, drop_last=True
+        collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
+        **kwargs, drop_last=True
     )
 
     if args.valid_interval is None:
@@ -311,6 +314,14 @@ if __name__ == '__main__':
     logger.info(f'Using model class: {model_cls}')
     if not args.from_pretrained:
         model_cfg = AutoConfig.from_pretrained(args.model_cfg)
+
+        if 'lstm' in args.model_path:
+            model_cfg = model_cfg.to_dict()
+            model_cfg['act_on'] = args.act_on
+            model_cfg['max_hop'] = args.max_hop
+            model_cfg['act_type'] = args.act_type
+            model_cfg['time_penalty'] = args.time_penalty
+
         model = model_cls(config=model_cfg)
     else:
         logger.info(f'Loading pretrained model: {args.from_pretrained}')
@@ -444,6 +455,10 @@ if __name__ == '__main__':
         for i in range(args.max_n_segments):
             if f'ce_loss_{i}' in data:
                 metrics[f'ce_loss_{i}'] = data[f'ce_loss_{i}'].mean().item()
+
+        if args.act_on:
+            metrics['n_updates'] = data['n_updates'].mean().item()
+            metrics['remainders'] = data['remainders'].mean().item()
 
         return metrics
 

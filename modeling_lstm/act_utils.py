@@ -84,7 +84,7 @@ class ACT_basic(nn.Module):
             else:
                 # apply transformation on the state
                 state = fn(state, *args, **kwargs)
-                if isinstance(state, tuple) and len(state) > 1:
+                if isinstance(state, tuple):
                     rest = state[1:]
                     state = state[0]
 
@@ -94,6 +94,7 @@ class ACT_basic(nn.Module):
             ## to save a line I assigned to previous_state so in the next 
             ## iteration is correct. Notice that indeed we return previous_state
             step+=1
+
         if rest is None:
             return previous_state, (remainders,n_updates)
         else:
@@ -124,7 +125,7 @@ class AdaptiveLayerWrapper(nn.Module):
         # self.remainders = self.remainders.to(hidden_states.device)
         # self.n_updates = self.n_updates.to(hidden_states.device)
 
-        fwd = self.layer.forward
+        fwd = self.layer
         out, (remainders, n_updates) = self.act(
             *args,
             state=hidden_states, 
@@ -140,11 +141,4 @@ class AdaptiveLayerWrapper(nn.Module):
         # self.n_updates = self.n_updates + n_updates
         
         return out, (remainders, n_updates)
-
-    
-    def zero_mem(self):
-        self.remainders = torch.zeros(1,)
-        self.n_updates = torch.zeros(1,)
-        self.segments_passed = torch.zeros(1,)
-        return super().zero_mem()
 

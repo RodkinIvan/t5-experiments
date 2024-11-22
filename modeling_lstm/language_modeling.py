@@ -15,7 +15,10 @@ class DoubleLSTMModel(nn.Module):
     def __init__(self, config):
         super(DoubleLSTMModel, self).__init__()
 
-        self.config = config.to_dict()
+        if isinstance(config, dict):
+            self.config = config
+        else:
+            self.config = config.to_dict()
         print(config)
         self.vocab_size = self.config['vocab_size']
         self.embedding_dim = self.config['embedding_dim']
@@ -26,52 +29,44 @@ class DoubleLSTMModel(nn.Module):
         self.act_type = self.config['act_type']
 
         self.embedding = nn.Embedding(self.vocab_size, self.embedding_dim)
-        if self.act_type == "layer":
-            self.lstm = nn.ModuleList([nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=1, batch_first=True) for _ in range(self.num_layers)])
+        if not self.act_on:
+            # self.lstm_layer = nn.ModuleList([nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=self.num_layers, batch_first=True)])
+            self.lstm_layer = nn.ModuleList([nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=1, batch_first=True) for _ in range(self.num_layers)])
+        elif self.act_type == "layer":
+            self.lstm_layer = nn.ModuleList([nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=1, batch_first=True) for _ in range(self.num_layers)])
+        elif self.act_type == 'model':
+            self.lstm_layer = nn.ModuleList([nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=self.num_layers, batch_first=True)])
         else:
-            self.lstm = nn.ModuleList([nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=self.num_layers, batch_first=True)])
+            raise NotImplementedError
+
+        # self.lstm_layer = nn.LSTM(self.embedding_dim, self.hidden_size, num_layers=self.num_layers, batch_first=True)
 
         if self.act_on:
             self.max_hop = self.config['max_hop']
-            for i in range(len(self.lstm)):
-                self.lstm[i] = AdaptiveLayerWrapper(self.lstm[i], self.hidden_size, self.max_hop)
-            
-        self.activation = nn.ReLU()
+            for i in range(len(self.lstm_layer)):
+                self.lstm_layer[i] = AdaptiveLayerWrapper(self.lstm_layer[i], self.hidden_size, self.max_hop)
+
 
         self.fc = nn.Linear(self.hidden_size, self.vocab_size)
-        self.loss_fn = nn.CrossEntropyLoss() 
-
     def forward(self, x):
         # print(x[0], x[0].shape)
         embedded = self.embedding(x)  # Shape: (batch_size, seq_len, embedding_dim)
        
   
-        self.remainders = []
-        self.n_updates = []
+        total_remainders = []
+        total_n_updates = []
 
-        print(self.num_layers)
-
-        for i in range(len(self.lstm)):
+        for i in range(len(self.lstm_layer)):
             if self.act_on:
-                embedded, (remainders, n_updates) = self.lstm[i](embedded)
-                # embedded = self.activation(embedded[0])
-                self.remainders.append(remainders)
-                self.n_updates.append(n_updates)
+                embedded, (remainders, n_updates) = self.lstm_layer[i](embedded)
+                total_remainders.append(remainders)
+                total_n_updates.append(n_updates)
+                embedded = embedded[0]
             else:
-                embedded, _ = self.lstm[i](embedded)
-                # embedded = self.activation(embedded)
+                embedded, _ = self.lstm_layer[i](embedded)
 
-     
-        
-        # self.remainders = torch.mean(torch.stack(self.remainders, dim=1), dim=1)
-        # self.n_updates = torch.mean(torch.stack(self.n_updates, dim=1), dim=1)
-
-        # self.n_updates = self.n_updates.detach().cpu()
-        # self.remainders = self.remainders.detach().cpu()
-
-
-        logits = self.fc(embedded[0])  # Shape: (batch_size, seq_len, vocab_size)
-        out = Munch(logits=logits, n_updates=self.n_updates, remainders=self.remainders)
+        logits = self.fc(embedded)  # Shape: (batch_size, seq_len, vocab_size)
+        out = Munch(logits=logits, n_updates=total_n_updates, remainders=total_remainders)
         # print(out.logits[0], out.logits[0].shape)
         return out
     

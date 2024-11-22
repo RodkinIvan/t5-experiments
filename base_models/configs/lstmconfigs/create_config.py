@@ -30,24 +30,35 @@ default_config = {
   "use_cache": True,
   "tie_word_embeddings": False,
   "use_parallel_residual": True,
-  "act_on": True,
-  "act_type": "model",
+  "act_on": False,
+  "act_type": "layer",
   "max_hop": 4,
   "time_penalty": 3e-4
 }
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--hidden_size", default=128)
-parser.add_argument("--num_hidden_layers", default=1)
+parser.add_argument("--num_layers", default=1)
 parser.add_argument("--embedding_dim", default=8)
+
+# parser.add_argument("--act_on", default=False)
+# parser.add_argument("--act_type", default='layer')
+# parser.add_argument("--max_hop", default=4)
+# parser.add_argument("--time_penalty", default=0)
+
 args = parser.parse_args()
 
 config = dict(**default_config)
 config['hidden_size'] = int(args.hidden_size)
-config['num_hidden_layers'] = int(args.num_hidden_layers)
+config['num_layers'] = int(args.num_layers)
 config['embedding_dim'] = int(args.embedding_dim)
 
-config_name = f"lstm_{args.num_hidden_layers}ed{args.embedding_dim}hd{args.hidden_size}"
+# config['act_on'] = bool(args.act_on)
+# config['act_type'] = args.act_type
+# config['max_hop'] = int(args.max_hop)
+# config['time_penalty'] = float(args.time_penalty)
+
+config_name = f"lstm_{args.num_layers}ed{args.embedding_dim}hd{args.hidden_size}"
 
 save_path = os.path.join(save_folder, f'{config_name}.json')
 print(f'Saving config {config_name} \n {save_path}')
