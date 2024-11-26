@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 export WANDB_PROJECT=babilong
-# export CUDA_VISIBLE_DEVICES=0,1,2,3
+export CUDA_VISIBLE_DEVICES=1
 export RWKV_JIT_ON=0
 export RWKV_NO_CUDA=1
 export CHUNK_LEN=1
-NP=4
+NP=1
 set -e
 cd ../..
 
