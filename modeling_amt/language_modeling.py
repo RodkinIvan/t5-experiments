@@ -8,7 +8,7 @@ import wandb
 from munch import Munch
 import os
 
-from modeling_amt.act_utils import ACT_basic, gen_timing_signal
+from modeling_amt.act_utils import ACT_basic, gen_timing_signal, ACTForWholeARMT
 from baselines.rwkv.language_modeling import RWKVModel
 
 def dpfp(x, nu=1):
@@ -107,7 +107,7 @@ class AssociativeLayerWrapper(torch.nn.Module):
             hidden_states = num / denom # (bsz, n_heads, seq_len, d_model // n_heads)
         else:
             hidden_states = num
-        hidden_states = hidden_states.permute(0, 2, 1, 3).reshape(bsz, seq_len, d_model)
+        hidden_states = self._from_heads(hidden_states)
         return hidden_states
     
     def forward(self, hidden_states, *args, **kwargs):
@@ -123,6 +123,16 @@ class AssociativeLayerWrapper(torch.nn.Module):
             # mem_tokens = out[0]
             self.update_mem(mem_tokens)
             self.first_seg = False
+        return out
+    
+    def forward_no_update(self, hidden_states, *args, **kwargs):
+        if not self.first_seg:
+            hidden_states = self.associate(
+                # self.ln(
+                    hidden_states
+                # )
+            )+ hidden_states
+        out = self.layer(hidden_states, *args, **kwargs)
         return out
 
     def update_mem(self, mem_tokens):
@@ -274,7 +284,7 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
         self.n_updates = self.n_updates.to(hidden_states.device)
         self.segments_passed = self.segments_passed.to(hidden_states.device)
 
-        fwd = super().forward
+        fwd = super().forward_no_update
         out, (remainders, n_updates) = self.act(
             *args,
             state=hidden_states, 
@@ -285,8 +295,12 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
             max_hop=self.depth,
             **kwargs
         )
-        
-        self.remainders = self.remainders + remainders # 1 - \sum(h_i); L' = L + tau * mean(reminders)
+        if not self.generate_mode:
+            mem_tokens = out[0][:, -self.num_mem_tokens:]
+            # mem_tokens = out[0]
+            self.update_mem(mem_tokens)
+            self.first_seg = False
+        self.remainders = self.remainders + remainders # 1 - \sum(h_i); L' = L + tau * mean(remainders)
         self.n_updates = self.n_updates + n_updates
         self.segments_passed = self.segments_passed + 1
         return out
@@ -313,7 +327,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                  freeze_mem=False,
                  act_on=False,
                  max_hop=4,
-                 act_type='associative'
+                 act_type='layer'
         ):
         super().__init__()
         self.model = base_model
@@ -342,7 +356,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                 use_denom=use_denom,
                 gating=gating
             )
-            if act_on:
+            if act_on and (act_type != 'model'):
                 kw['max_hop'] = max_hop
             if not act_on:
                 self.layers[i] = AssociativeLayerWrapper(**kw)
@@ -350,8 +364,19 @@ class AssociativeMemoryCell(torch.nn.Module):
                 self.layers[i] = AdaptiveAssociativeLayerWrapper(**kw)
             elif act_type == 'layer':
                 self.layers[i] = AdaptiveAssociativeLayerWrapper2(**kw)
+            elif act_type == 'model':
+                self.layers[i] = AssociativeLayerWrapper(**kw)
             else:
                 raise f'Unknown ACT type: {act_type}'
+
+        if act_type == 'model':
+            self.act = ACTForWholeARMT(self.d_model)
+            self.depth = max_hop
+            self.max_length = 1024
+            self.timing_signal = gen_timing_signal(self.max_length, self.d_model)
+            self.position_signal = gen_timing_signal(self.depth, self.d_model)
+        self.act_type = act_type
+
         self.create_memory(num_mem_tokens)
         self.wrap_pos = wrap_pos
         self.act_on = act_on
@@ -370,7 +395,7 @@ class AssociativeMemoryCell(torch.nn.Module):
         self.num_mem_tokens = num_mem_tokens
         embeddings = self.model.get_input_embeddings()
         memory_dim =  getattr(self.model.config, 'n_embd', self.model.config.hidden_size)
-        memory_weights = torch.randn((num_mem_tokens, memory_dim)) * embeddings.weight.data.std()
+        memory_weights = torch.randn((num_mem_tokens, memory_dim), device=embeddings.weight.data.device) * embeddings.weight.data.std()
         self.register_parameter('memory', torch.nn.Parameter(memory_weights, requires_grad=True))
 
     def wrap_positional_embeddings(self, num_mem_tokens):
@@ -395,7 +420,22 @@ class AssociativeMemoryCell(torch.nn.Module):
             layer.zero_mem()
             pass
 
-    def forward(self, input_ids, labels=None, labels_mask=None, zero_mem=False, **kwargs):
+    def forward(self, input_ids, labels=None, labels_mask=None, zero_mem=False, attention_mask=None, **kwargs):
+        if self.act_type != 'model':
+            out = self.forward_with_update(input_ids, labels, labels_mask, zero_mem, attention_mask=attention_mask, **kwargs)
+        else:
+            seg_kwargs = self.process_input(input_ids=input_ids, 
+                                            labels=labels, 
+                                            labels_mask=labels_mask, 
+                                            zero_mem=zero_mem, 
+                                            attention_mask=attention_mask, 
+                                            **kwargs
+                                        )
+            out = self.gptneox_forward_act(**seg_kwargs)
+            out = self.process_output(out, labels=labels, labels_mask=labels_mask)
+        return out
+
+    def forward_with_update(self, input_ids, labels=None, labels_mask=None, zero_mem=False, **kwargs):
         if zero_mem:
             self.zero_mem()
 
@@ -492,7 +532,9 @@ class AssociativeMemoryCell(torch.nn.Module):
 
         if kwargs.get('use_cache', False):
             out['past_key_values'] = model_outputs.past_key_values
-        
+        if self.act_on and self.act_type == 'model':
+            out['remainders'] = model_outputs['remainders']
+            out['n_updates'] = model_outputs['n_updates']
         return out
     
     def generate(self, input_ids, attention_mask, zero_mem=False, **generate_kwargs):
@@ -510,6 +552,58 @@ class AssociativeMemoryCell(torch.nn.Module):
         self.generate_mode(False)
         return out
     
+    def apply_layers(self, hidden_states, causal_mask, position_ids, cache_position, position_embeddings, update_mem=True):
+        if not update_mem:
+            tmp = []
+            for i in range(len(self.layers)):
+                tmp.append(self.layers[i].forward)
+                self.layers[i].forward = self.layers[i].forward_no_update
+
+        for layer in self.layers:
+            hidden_states = layer(
+                    hidden_states,
+                    attention_mask=causal_mask,
+                    position_ids=position_ids,
+                    cache_position=cache_position,
+                    position_embeddings=position_embeddings,
+                )[0]
+
+        if not update_mem:
+            for i in range(len(self.layers)):
+                self.layers[i].forward = tmp[i]
+        return hidden_states
+        
+    
+    def gptneox_forward_act(self, inputs_embeds, labels=None, labels_mask=None, zero_mem=False, attention_mask=None, **kwargs):
+            
+            drop = self.model.gpt_neox.emb_dropout
+            hidden_states = drop(inputs_embeds)
+            seq_length = hidden_states.shape[1]
+            cache_position = torch.arange(0, seq_length, device=hidden_states.device)
+            position_ids = cache_position.unsqueeze(0)
+
+            position_embeddings = self.model.gpt_neox.rotary_emb(hidden_states, position_ids)
+            causal_mask = self.model.gpt_neox._update_causal_mask(
+                attention_mask, hidden_states, cache_position, None, False
+            )
+
+            out, (remainders, n_updates) = self.act(
+                state=hidden_states,
+                inputs=hidden_states,
+                fn_no_update=lambda *args, **kwargs: self.apply_layers(*args, **kwargs, update_mem=False),
+                fn_update=self.apply_layers,
+                time_enc=self.timing_signal,
+                pos_enc=self.position_signal,
+                max_hop=self.depth,
+                causal_mask=causal_mask,
+                position_ids=position_ids,
+                cache_position=cache_position,
+                position_embeddings=position_embeddings
+            )
+            hidden_states = self.model.gpt_neox.final_layer_norm(out)
+
+            lm_logits = self.model.embed_out(hidden_states)
+            return Munch(logits=lm_logits, n_updates=n_updates, remainders=remainders)
 
 class AssociativeRecurrentWrapper(torch.nn.Module):
     def __init__(self, memory_cell, **rmt_kwargs):
@@ -518,6 +612,9 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
         self.memory_cell = memory_cell
         self.rmt_config = rmt_kwargs
 
+    def gradient_checkpointing_enable(self, *args, **kwargs):
+        self.memory_cell.model.gradient_checkpointing_enable(*args, **kwargs)
+        
     def forward(self, 
                 input_ids, 
                 labels=None, 
@@ -636,8 +733,8 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             out['loss'] = loss_fct(flat_logits, flat_labels)
         else:
             out['loss'] = 0 
-
-        out['ce_loss'] = out['loss']
+        if ('HF_Trainer' not in os.environ) or not os.environ['HF_Trainer']:
+            out['ce_loss'] = out['loss']
         
         out['logits'] = full_logits
         segment_keys = ['loss', 'logits']
@@ -647,26 +744,29 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             full_hidden_states = tuple([torch.cat(layer_hs, dim=1) for layer_hs in zip(*[o.hidden_states for o in cell_outputs])])
             segment_keys.append('hidden_states')
             out['hidden_states'] = full_hidden_states
-
-        for seg_num, o in enumerate(cell_outputs):
-            for key, value in o.items():
-                if any([sk in key for sk in segment_keys]):
-                    out[f'{key}_{seg_num}'] = value
+        if ('HF_Trainer' not in os.environ) or not os.environ['HF_Trainer']:
+            for seg_num, o in enumerate(cell_outputs):
+                for key, value in o.items():
+                    if any([sk in key for sk in segment_keys]):
+                        out[f'{key}_{seg_num}'] = value
 
         remainders = []
         n_updates = []
         act_on = self.rmt_config['act_on'] if 'act_on' in self.rmt_config else False
         if act_on:
-
+          if self.memory_cell.act_type != 'model':
             for layer in self.memory_cell.layers:
                 remainders.append(layer.remainders / layer.segments_passed)
                 n_updates.append(layer.n_updates / layer.segments_passed)
             remainders = torch.mean(torch.stack(remainders, dim=0))
             n_updates = torch.mean(torch.stack(n_updates, dim=0))
-            out['n_updates'] = n_updates.detach().cpu()
-            out['remainders'] = remainders.detach().cpu()
-            time_penalty = self.rmt_config['time_penalty']
-            out['loss'] = out['loss'] + time_penalty * remainders
+          else:
+            remainders = torch.mean(torch.stack([o['remainders'] for o in cell_outputs], dim=0))
+            n_updates = torch.mean(torch.stack([o['n_updates'] for o in cell_outputs], dim=0))
+          out['n_updates'] = n_updates.detach().cpu()
+          out['remainders'] = remainders.detach().cpu()
+          time_penalty = self.rmt_config['time_penalty']
+          out['loss'] = out['loss'] + time_penalty * remainders
         
         return out 
         
