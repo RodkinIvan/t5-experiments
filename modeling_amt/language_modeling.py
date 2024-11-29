@@ -100,7 +100,6 @@ class AssociativeLayerWrapper(torch.nn.Module):
         mq = F.normalize(mq, dim=-1, p=2.0)
         # crutch for dataparallel
         # mq += 0 * self.W_mb(hidden_states).sum() * self.W_mk(hidden_states).sum() * self.W_mv(hidden_states).sum() 
-
         num = torch.einsum('ihjk,ihkt->ihjt', mq, self.W_mem)
         if self.use_denom:
             denom = torch.einsum("ihk,ihjk->ihj", self.z, mq)[..., None] + 1e-5
@@ -196,6 +195,12 @@ class AssociativeLayerWrapper(torch.nn.Module):
             self.z = torch.zeros(1, self.n_heads, self.d_key // self.n_heads).to(next(self.parameters()).dtype)
         self.seg_num = 0
 
+    def detach_mem(self):
+        self.W_mem = self.W_mem.detach()
+        if self.use_denom:
+            self.z = self.z.detach()
+
+
 
 
 class AdaptiveAssociativeLayerWrapper(AssociativeLayerWrapper):
@@ -249,6 +254,11 @@ class AdaptiveAssociativeLayerWrapper(AssociativeLayerWrapper):
         self.segments_passed = torch.zeros(1,)
         return super().zero_mem()
     
+    def detach_mem(self):
+        self.remainders = torch.zeros(1,)
+        self.n_updates = torch.zeros(1,)
+        self.segments_passed = torch.zeros(1,)
+        return super().detach_mem()
 
 
 
@@ -311,6 +321,12 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
         self.n_updates = torch.zeros(1,)
         self.segments_passed = torch.zeros(1,)
         return super().zero_mem()
+    
+    def detach_mem(self):
+        self.remainders = torch.zeros(1,)
+        self.n_updates = torch.zeros(1,)
+        self.segments_passed = torch.zeros(1,)
+        return super().detach_mem()
 
 
 class AssociativeMemoryCell(torch.nn.Module):
@@ -418,6 +434,11 @@ class AssociativeMemoryCell(torch.nn.Module):
     def zero_mem(self):
         for layer in self.layers:
             layer.zero_mem()
+            pass
+    
+    def detach_mem(self):
+        for layer in self.layers:
+            layer.detach_mem()
             pass
 
     def forward(self, input_ids, labels=None, labels_mask=None, zero_mem=False, attention_mask=None, **kwargs):
@@ -611,6 +632,7 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
         
         self.memory_cell = memory_cell
         self.rmt_config = rmt_kwargs
+        self.last_state = None
 
     def gradient_checkpointing_enable(self, *args, **kwargs):
         self.memory_cell.model.gradient_checkpointing_enable(*args, **kwargs)
@@ -625,8 +647,8 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
                 output_hidden_states=None,
                 input_segmented=False,
                 output_only_last_segment=False,
+                use_previous_batch_state=torch.zeros(1)
                 ):
-        
         sliding_window = self.rmt_config['sliding_window'] if 'sliding_window' in self.rmt_config else False
         if input_segmented:
             n_segs = input_ids.shape[1] if not (input_ids is None) else inputs_embeds.shape[1]
@@ -647,8 +669,13 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
         past_key_values = None
         num_mem_tokens = self.memory_cell.num_mem_tokens
         prev_attn_mask = None
-        self.memory_cell.zero_mem()
-        state = None
+        if not use_previous_batch_state.all() or self.last_state is None:
+            self.memory_cell.zero_mem()
+            state = None
+        else: 
+            self.memory_cell.detach_mem()
+            state = self.last_state
+            
         for seg_num, segment in enumerate(segmented):
             seg_len = segment['input_ids'].size(-1)
             segment['use_cache'] = sliding_window
@@ -662,6 +689,7 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             cell_out = self.memory_cell(**segment)
             if 'state' in cell_out:
                 state = cell_out['state']
+                self.last_state = tuple([s.detach() for s in state])
             if sliding_window:
                 prev_attn_mask = segment['attention_mask'] * torch.triu(torch.ones_like(segment['attention_mask']))
                 past_key_values = [
@@ -678,6 +706,10 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
                                    labels_mask=labels_mask,
                                    output_attentions=output_attentions, 
                                    output_hidden_states=output_hidden_states)
+        
+        if not self.training:
+            self.memory_cell.zero_mem()
+            self.last_state = None
         return out
 
     def segment(self, **kwargs):

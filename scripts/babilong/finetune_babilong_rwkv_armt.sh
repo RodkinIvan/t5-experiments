@@ -25,7 +25,7 @@ METRIC=exact_match
 MODEL_NAME=~/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth
 TOKENIZER=EleutherAI/pythia-160m  # backbone model
 SEGMENT_SIZE=512 # size of one segment in tokens
-TBS=256
+TBS=64
 
 MEMORY_SIZE=10
 D_MEM=64
@@ -37,7 +37,7 @@ ITERSS=(5000 10000 10000 10000 10000 10000)
 BSS=(32 32 32 32 32 32)
 
 
-for (( j=5; j<${#MAX_N_SEGMENTSS[@]}; j++ ))
+for (( j=0; j<${#MAX_N_SEGMENTSS[@]}; j++ ))
 do
 
 BS=${BSS[j]}
@@ -74,7 +74,7 @@ ACCEL_CONFIG=~/rmt/wip/accel_configs/exp/accelerate/deepspeed_fp16_tbs${TBS}bs${
 
 if [[ j -gt 0 ]]
 then
-    MODEL_CPT=~/runs/babilong/${TASK_DATASET}/rwkv_armt/$MODEL_NAME/lr${LR}_${SCHEDULER}_adamw_wd1e-03_${MAX_N_SEGMENTSS[j-1]}x${SEGMENT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_bptt-${K2}/run_$N 
+    MODEL_CPT=~/runs/babilong/${TASK_DATASET}/rwkv_armt/$MODEL_NAME/lr${LR}_${SCHEDULER}_adamw_wd1e-02_${MAX_N_SEGMENTSS[j-1]}x${SEGMENT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_bptt-${K2}/run_$N 
 else
     MODEL_CPT=None
 fi
@@ -87,7 +87,7 @@ accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_
         --task_dataset $TASK_DATASET \
         --noise_dataset $NOISE_DATASET \
         --babi_path ~/lab/associative-recurrent-memory-transformer/data/tasks_1-20_v1-2/en-10k \
-        --model_path ~/runs/babilong/${TASK_DATASET}/rwkv_armt/$MODEL_NAME/lr${LR}_${SCHEDULER}_adamw_wd1e-03_${MAX_N_SEGMENTS}x${SEGMENT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_bptt-${K2}/run_$N \
+        --model_path ~/runs/babilong/${TASK_DATASET}/rwkv_armt/$MODEL_NAME/lr${LR}_${SCHEDULER}_adamw_wd1e-02_${MAX_N_SEGMENTS}x${SEGMENT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_bptt-${K2}/run_$N \
         --from_pretrained $MODEL_NAME \
         --model_type $MODEL_TYPE \
         --memory_cell_cls $MEMORY_CELL \
@@ -115,7 +115,9 @@ accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_
         --tokenizer $TOKENIZER \
         --d_mem $D_MEM \
         --layers_attr model.blocks \
-        --num_mem_tokens $MEMORY_SIZE
+        --num_mem_tokens $MEMORY_SIZE \
+        --infctx \
+        --infctx_p 0.7
         # --freeze_mem
 done
 done

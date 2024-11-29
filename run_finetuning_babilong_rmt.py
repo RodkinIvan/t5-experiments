@@ -119,6 +119,10 @@ parser.add_argument('--layers_attr', type=str, default=None, help='attribute of 
 parser.add_argument('--wrap_pos', action='store_true', default=False,
                     help='Wrap positional encoding for memory tokens (default: False)')
 
+parser.add_argument('--infctx', action='store_true', default=False,
+                    help='substitute start state from the random batch')
+parser.add_argument('--infctx_p', type=float, default=0.7, help='probability of substituting the starting state from the random batch')
+
 parser.add_argument('--no_denom', action='store_true', default=None,
                     help='use no denominator in ARMT')
 parser.add_argument('--desired_metric', type=float, default=1.0, help='metric to stop training')
@@ -281,6 +285,9 @@ if __name__ == '__main__':
         collated['attention_mask'] = attention_mask.bool()
         collated['attention_mask_generate'] = gen_attn_mask.bool()
         collated['target_text'] = [b['answer'] for b in batch]
+        collated['use_previous_batch_state'] = torch.zeros(len(input_ids)).bool()
+        if args.infctx and random.random() < args.infctx_p and not valid:
+            collated['use_previous_batch_state'] = torch.ones(len(input_ids)).bool()
         return collated
 
     # train_dataset, valid_dataset, test_dataset = dataset["train"], dataset["validation"], dataset["test"]
@@ -294,7 +301,7 @@ if __name__ == '__main__':
     test_sampler = DistributedSampler(test_dataset, rank=accelerator.process_index,
                                       num_replicas=accelerator.num_processes, drop_last=False, shuffle=False)
     train_dataloader = DataLoader(batch_size=per_worker_batch_size, dataset=train_dataset, sampler=train_sampler,
-                                  **kwargs)
+                                  drop_last=True, **kwargs)
     test_dataloader = DataLoader(batch_size=1 if args.use_generate_on_valid else per_worker_batch_size, dataset=test_dataset, sampler=test_sampler, **kwargs_valid)
 
     if args.valid_interval is None:
