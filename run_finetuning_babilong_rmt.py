@@ -385,7 +385,6 @@ if __name__ == '__main__':
 
         ## load cpt of rmt
         if args.model_cpt and args.model_cpt != 'None':
-<<<<<<< Updated upstream
             if 'mamba' not in args.model_cpt:
                 model_cpt = os.path.join(args.model_cpt, "model_best/pytorch_model.bin")
                 cpt = torch.load(model_cpt, map_location='cpu')
@@ -398,14 +397,7 @@ if __name__ == '__main__':
                 w = model.load_state_dict(cpt, strict=False)
                 model.memory_cell.model.tie_weights()
                 logger.info(f'loaded mamba with mis w {w}')
-=======
-            model_cpt = os.path.join(args.model_cpt, "model_best/pytorch_model"+args.model_suffix+".bin")
-            cpt = torch.load(model_cpt, map_location='cpu')
-            model.load_state_dict(cpt)
-            logger.info(f'Loaded RMT state dict from: {args.model_cpt}')
-            logger.info(f'model suffix \"{args.model_suffix}\"')
-            
->>>>>>> Stashed changes
+
 
     if args.freeze_model_weights:
         for n, p in model.named_parameters():
