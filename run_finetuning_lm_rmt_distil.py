@@ -84,7 +84,7 @@ parser.add_argument('--model_cpt', type=str, default=None, help='pretrained mode
 parser.add_argument('--model_type', type=str, default='encoder-decoder',
                     help='model type, encoder, encoder-decoder, decoder, affects preprocessing '
                          '(default: encoder-decoder)')
-
+parser.add_argument('--infctx_p', type=float, default=0.0, help='probability of substituting the starting state from the random batch')
 parser.add_argument('--alpha_distil', type=float, default=None, help='')
 
 # Aydar # RMT args
@@ -262,41 +262,7 @@ if __name__ == '__main__':
         return result
 
     id_pad_value = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
-    if args.sliding_window:
-        def collate_fn(batch):
-            input_ids = [torch.tensor(b['input_ids']).long() for b in batch]
-            input_lens = [el.shape[-1] for el in input_ids]
-
-            labels = [torch.tensor(b['labels']).long() for b in batch]
-            attention_mask = [torch.tensor(b['attention_mask']).long() for b in batch]
-            input_ids = pad_sequence(input_ids, padding_value=id_pad_value).T
-            labels = pad_sequence(labels, padding_value=-100).T
-            attention_mask = pad_sequence(attention_mask, padding_value=0).T
-
-            # make sliding window att mask
-            attention_mask = attention_mask[:, None, :].repeat(1, attention_mask.shape[1], 1)
-            attention_mask = (torch.tril(attention_mask, 0) * (1 - torch.tril(torch.ones_like(attention_mask), -block_size)))
-
-            collated = {'input_ids': input_ids,
-                        'labels': labels, 
-                        'attention_mask': attention_mask}
-
-            if input_ids.shape[1] != block_size:
-                # take only labels for last block (maybe use all labels during training?)
-                labels_mask = torch.ones_like(input_ids, dtype=torch.bool)
-                for i, lens in enumerate(input_lens):
-                    labels_mask[i, max(lens - block_size, 0): lens] = True
-                collated['labels_mask'] = labels_mask
-
-            if getattr(args, 'vary_n_segments', False):
-                n_segments = random.randint(1, args.max_n_segments + 1)
-                n_tokens = n_segments * block_size
-                for k in collated:
-                    collated[k] = collated[k][:, -n_tokens:]
-
-            return collated
-    else:
-        def collate_fn(batch, valid=False):
+    def collate_fn(batch, valid=False):
             input_ids = [torch.tensor(b['input_ids'][::-1]).long() for b in batch]
             labels = [torch.tensor(b['labels'][::-1]).long() for b in batch]
             attention_mask = [torch.tensor(b['attention_mask'][::-1]).long() for b in batch]
@@ -337,7 +303,8 @@ if __name__ == '__main__':
                     n_segments = 2 ** logn_segments
                 for k in collated:
                     collated[k] = torch.stack(torch.chunk(collated[k], n_segments, dim=1), dim=1)
-
+            if args.infctx_p > 0 and random.random() < args.infctx_p and not valid:
+                collated['use_previous_batch_state'] = torch.ones(len(input_ids)).bool()
             return collated
 
     with accelerator.main_process_first():
