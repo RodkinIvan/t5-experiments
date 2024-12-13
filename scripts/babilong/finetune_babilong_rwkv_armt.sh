@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 export WANDB_PROJECT=babilong
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 export RWKV_JIT_ON=0
 export RWKV_NO_CUDA=1
 export CHUNK_LEN=1
@@ -62,14 +62,14 @@ TEST_SAMPLE_SIZE=$(($SEGMENT_SIZE*$MAX_VAL_SEGMENTS))
 
 cd accel_configs/
 python create_config.py \
-        --fp16 \
+        --bf16 \
         --train_batch_size $TBS\
         --train_micro_batch_size_per_gpu $BS\
         --gradient_accumulation_steps $GRAD_ACC_STEPS\
         --np $NP\
         --gradient_clipping 1.0
 cd ..
-ACCEL_CONFIG=~/rmt/wip/accel_configs/exp/accelerate/deepspeed_fp16_tbs${TBS}bs${BS}g${GRAD_ACC_STEPS}c1.0np${NP}.yaml
+ACCEL_CONFIG=~/rmt/wip/accel_configs/exp/accelerate/deepspeed_bf16_tbs${TBS}bs${BS}g${GRAD_ACC_STEPS}c1.0np${NP}.yaml
 # ACCEL_CONFIG=./accel_configs/deepspeed.yaml
 
 if [[ j -gt 0 ]]
@@ -83,7 +83,7 @@ echo RUNNING: TASK_DATASET $TASK_DATASET MEMORY_SIZE $MEMORY_SIZE SEGMENT_SIZE $
 echo SAMPLE_SIZE $SAMPLE_SIZE MODEL_NAME $MODEL_NAME LR $LR N $N
 echo gradient accumulation steps $GRAD_ACC_STEPS
 
-accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_precision fp16 --num_processes $NP run_finetuning_babilong_rmt.py \
+accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_precision bf16 --num_processes $NP run_finetuning_babilong_rmt.py \
         --task_dataset $TASK_DATASET \
         --noise_dataset $NOISE_DATASET \
         --babi_path ~/lab/associative-recurrent-memory-transformer/data/tasks_1-20_v1-2/en-10k \
@@ -117,8 +117,8 @@ accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_
         --layers_attr model.blocks \
         --num_mem_tokens $MEMORY_SIZE \
         --infctx \
-        --infctx_p 0.7
-        # --freeze_mem
+        --infctx_p 0.7 \
+        --no_denom
 done
 done
 echo "done"

@@ -5,7 +5,7 @@ export CUDA_VISIBLE_DEVICES=1
 export RWKV_JIT_ON=0
 export RWKV_NO_CUDA=1
 export CHUNK_LEN=1
-NP=1
+NP=$(echo $CUDA_VISIBLE_DEVICES | awk -F',' '{print NF}')
 set -e
 cd ../..
 
@@ -62,14 +62,14 @@ TEST_SAMPLE_SIZE=$(($SEGMENT_SIZE*$MAX_VAL_SEGMENTS))
 
 cd accel_configs/
 python create_config.py \
-        --fp16 \
+        --bf16 \
         --train_batch_size $TBS\
         --train_micro_batch_size_per_gpu $BS\
         --gradient_accumulation_steps $GRAD_ACC_STEPS\
         --np $NP\
         --gradient_clipping 1.0
 cd ..
-ACCEL_CONFIG=~/rmt/wip/accel_configs/exp/accelerate/deepspeed_fp16_tbs${TBS}bs${BS}g${GRAD_ACC_STEPS}c1.0np${NP}.yaml
+ACCEL_CONFIG=~/rmt/wip/accel_configs/exp/accelerate/deepspeed_bf16_tbs${TBS}bs${BS}g${GRAD_ACC_STEPS}c1.0np${NP}.yaml
 # ACCEL_CONFIG=./accel_configs/deepspeed.yaml
 
 MODEL_CPT=/home/ivan.rodkin/runs/babilong/qa1_single-supporting-fact/rwkv_armt//home/ivan.rodkin/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth/lr1e-04_linear_adamw_wd1e-02_32x512_mem10_bs64_bptt--1/run_2
@@ -78,7 +78,7 @@ echo RUNNING: TASK_DATASET $TASK_DATASET MEMORY_SIZE $MEMORY_SIZE SEGMENT_SIZE $
 echo SAMPLE_SIZE $SAMPLE_SIZE MODEL_NAME $MODEL_NAME LR $LR N $N
 echo gradient accumulation steps $GRAD_ACC_STEPS
 
-accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_precision fp16 --num_processes $NP run_finetuning_babilong_rmt.py \
+accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_precision bf16 --num_processes $NP run_finetuning_babilong_rmt.py \
         --task_dataset $TASK_DATASET \
         --noise_dataset $NOISE_DATASET \
         --babi_path ~/lab/associative-recurrent-memory-transformer/data/tasks_1-20_v1-2/en-10k \
@@ -113,7 +113,8 @@ accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_
         --num_mem_tokens $MEMORY_SIZE \
         --infctx \
         --infctx_p 0.7 \
-        --validate_only
+        --validate_only \
+        --no_denom
         # --freeze_mem
 done
 done
