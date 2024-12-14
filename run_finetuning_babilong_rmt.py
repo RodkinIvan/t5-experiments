@@ -470,6 +470,17 @@ if __name__ == '__main__':
                     if 'GEN' in generation_outputs[i]:
                         generation_outputs[i] = generation_outputs[i].split('GEN')[-1]
             metrics['exact_match'] = np.mean([text == pred for text, pred in zip (batch['target_text'], generation_outputs)])
+        else:
+            # y, p = batch['labels'], output['predictions']
+            predictions = torch.argmax(output['logits'].detach(), dim=-1)
+            predicted_labels = [p[m[-len(p):]] for p, m in zip(predictions, batch['labels_mask'])]
+            predicted_labels = tokenizer.batch_decode(predicted_labels, add_special_tokens=False)
+            for i, l in enumerate(predicted_labels):
+                if '<|endoftext|>' in l:
+                    eos_ind = predicted_labels[i].index('<|endoftext|>')
+                    predicted_labels[i] = predicted_labels[i][:eos_ind]
+                    
+            metrics['exact_match'] = np.mean([text == pred for text, pred in zip (batch['target_text'], predicted_labels)])
         return metrics
     # HF datasets can compute metrics on each gpu process and then aggregate them on process with rank 0
     # synchronization is done by using temporay files on a shared filesystem
