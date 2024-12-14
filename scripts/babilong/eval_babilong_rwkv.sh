@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 export WANDB_PROJECT=babilong
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 export RWKV_JIT_ON=0
 export RWKV_NO_CUDA=1
 export CHUNK_LEN=1
@@ -25,11 +25,10 @@ TOKENIZER=EleutherAI/pythia-160m  # backbone model
 SEGMENT_SIZE=512 # size of one segment in tokens
 TBS=32
 
-MAX_N_SEGMENTSS=(2 3 5 8 16 32)
-MAX_VAL_SEGMENTSS=(2 3 5 8 16 128)
-ITERSS=(5000 10000 10000 10000 10000 10000)
+MAX_N_SEGMENTSS=(128 256 1000)
+ITERSS=(1 1 1 1 1 1 1 1 1)
 # ITERSS=(1)
-BSS=(8 8 8 8 8 8)
+BSS=(32 32 32 32 32 32 32 32 32 32 32)
 
 
 for (( j=0; j<${#MAX_N_SEGMENTSS[@]}; j++ ))
@@ -38,7 +37,7 @@ do
 BS=${BSS[j]}
 ITERS=${ITERSS[j]}
 MAX_N_SEGMENTS=${MAX_N_SEGMENTSS[j]}
-MAX_VAL_SEGMENTS=${MAX_VAL_SEGMENTSS[j]}
+MAX_VAL_SEGMENTS=${MAX_N_SEGMENTSS[j]}
 
 GRAD_ACC_STEPS=$(($TBS/($BS*$NP)))
 SCHEDULER=linear
@@ -46,7 +45,7 @@ LR=1e-04
 
 
 
-for N in 3
+for N in 1
 do
 
 K2=-1   # BPTT unroll length
@@ -69,12 +68,8 @@ ACCEL_CONFIG=~/rmt/wip/accel_configs/exp/accelerate/deepspeed_bf16_tbs${TBS}bs${
 
 # SEGMENT_SIZE=$SAMPLE_SIZE
 
-if [[ j -gt 0 ]]
-then
-    MODEL_CPT=/mnt/data/users/ivan.rodkin/runs/babilong/${TASK_DATASET}/rwkv/$MODEL_NAME/lr${LR}_${SCHEDULER}_adamw_wd1e-03_${MAX_N_SEGMENTSS[j-1]}x${SEGMENT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_bptt-${K2}/run_$N 
-else
-    MODEL_CPT=None
-fi
+MODEL_CPT=/mnt/data/users/ivan.rodkin/runs/babilong/qa1_single-supporting-fact/rwkv//home/ivan.rodkin/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth/lr1e-04_linear_adamw_wd1e-03_32x512_mem_bs32_bptt--1/run_1
+
 
 echo RUNNING: TASK_DATASET $TASK_DATASET MEMORY_SIZE $MEMORY_SIZE SEGMENT_SIZE $SEGMENT_SIZE 
 echo SAMPLE_SIZE $SAMPLE_SIZE MODEL_NAME $MODEL_NAME LR $LR N $N
@@ -110,8 +105,7 @@ accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29701 --mixed_
         --clip_grad_norm 1.0 \
         --model_cpt $MODEL_CPT \
         --tokenizer $TOKENIZER \
-        --infctx \
-        --infctx_p 0.7
+        --validate_only
 done
 done
 echo "done"
