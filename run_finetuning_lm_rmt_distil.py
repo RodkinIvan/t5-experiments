@@ -51,6 +51,8 @@ from lm_experiments_tools.utils import get_cls_by_name, get_optimizer, prepare_r
 parser = HfArgumentParser(TrainerArgs)
 
 parser.add_argument('--rwkv_tokenizer', type=str, default=None, help='path or name of pre-trained HF Tokenizer')
+
+parser.add_argument('--grad_cp', type=bool, default=False, help='enable gradient_checkpointing')
 parser.add_argument('--task_name', type=str, help="Task name, wikitext, ...")
 parser.add_argument('--tokenized_dataset', type=str, help="Tokenized dataset, ...", default=None)
 parser.add_argument('--validate_only', action='store_true', default=False,
@@ -369,7 +371,12 @@ if __name__ == '__main__':
         model = model_cls(config=model_cfg)
 
         logger.info(f'Loading pretrained model: {args.from_pretrained}')
-        base_model = model_cls.from_pretrained(args.from_pretrained, use_safetensors=False)
+        model_args = dict(
+            use_safetensors=False,
+        )
+        if args.grad_cp:
+            model_args['grad_cp'] = args.grad_cp
+        base_model = model_cls.from_pretrained(args.from_pretrained, **model_args)
 
         model.load_state_dict(base_model.state_dict(), strict=False)
         del base_model
@@ -430,7 +437,7 @@ if __name__ == '__main__':
         if args.no_denom is not None:
             mem_cell_args['use_denom'] = not args.no_denom
 
-        cell = memory_cell_cls(**mem_cell_args)
+        cell = memory_cell_cls(**mem_cell_args, segment_size=block_size)
         model = recurrent_wrapper_cls(cell, 
                                       segment_size=block_size,
                                       max_n_segments=args.max_n_segments, 

@@ -121,7 +121,6 @@ class AssociativeLayerWrapper(torch.nn.Module):
             mem_tokens = out[0][:, -self.num_mem_tokens:]
             # mem_tokens = out[0]
             self.update_mem(mem_tokens)
-            self.first_seg = False
         return out
     
     def forward_no_update(self, hidden_states, *args, **kwargs):
@@ -179,6 +178,7 @@ class AssociativeLayerWrapper(torch.nn.Module):
             self.z = self.z + (new_info_coef*mk).sum(dim=-2)
         # self.z = self.z + (new_info_coef*mb[..., None]*mk).sum(dim=1)
         self.seg_num += 1
+        self.first_seg = False
 
     def freeze_mem(self):
         self.W_mb.weight.requires_grad = False
@@ -343,7 +343,8 @@ class AssociativeMemoryCell(torch.nn.Module):
                  freeze_mem=False,
                  act_on=False,
                  max_hop=4,
-                 act_type='layer'
+                 act_type='layer',
+                 **rmt_config
         ):
         super().__init__()
         self.model = base_model

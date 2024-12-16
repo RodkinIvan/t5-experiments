@@ -90,7 +90,7 @@ class RWKV_v6(RWKVModel):
         load = _args[0]
         args = dict(
             load_model=load,
-            grad_cp=True
+            grad_cp=kwargs.get("grad_cp", False)
         )
         model = RWKV_v6(**args)
         return model
