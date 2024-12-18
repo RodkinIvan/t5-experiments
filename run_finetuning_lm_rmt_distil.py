@@ -52,7 +52,7 @@ parser = HfArgumentParser(TrainerArgs)
 
 parser.add_argument('--rwkv_tokenizer', type=str, default=None, help='path or name of pre-trained HF Tokenizer')
 
-parser.add_argument('--grad_cp', type=bool, default=False, help='enable gradient_checkpointing')
+parser.add_argument('--grad_cp', action='store_true', default=False, help='enable gradient_checkpointing')
 parser.add_argument('--task_name', type=str, help="Task name, wikitext, ...")
 parser.add_argument('--tokenized_dataset', type=str, help="Tokenized dataset, ...", default=None)
 parser.add_argument('--validate_only', action='store_true', default=False,
