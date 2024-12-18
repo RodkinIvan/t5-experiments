@@ -23,9 +23,9 @@ METRIC=exact_match
 MODEL_NAME=~/lab/rwkv-x060-173m-pile-20240515-ctx4k.pth
 TOKENIZER=EleutherAI/pythia-160m  # backbone model
 SEGMENT_SIZE=512 # size of one segment in tokens
-TBS=32
+TBS=64
 
-MAX_N_SEGMENTSS=(128 256 1000)
+MAX_N_SEGMENTSS=(2000)
 ITERSS=(1 1 1 1 1 1 1 1 1)
 # ITERSS=(1)
 BSS=(32 32 32 32 32 32 32 32 32 32 32)
@@ -75,7 +75,7 @@ echo RUNNING: TASK_DATASET $TASK_DATASET MEMORY_SIZE $MEMORY_SIZE SEGMENT_SIZE $
 echo SAMPLE_SIZE $SAMPLE_SIZE MODEL_NAME $MODEL_NAME LR $LR N $N
 echo gradient accumulation steps $GRAD_ACC_STEPS
 
-accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29701 --mixed_precision bf16 --num_processes $NP run_finetuning_babilong_rmt.py \
+accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_precision bf16 --num_processes $NP run_finetuning_babilong_rmt.py \
         --task_dataset $TASK_DATASET \
         --noise_dataset $NOISE_DATASET \
         --babi_path /mnt/data/users/ivan.rodkin/lab/associative-recurrent-memory-transformer/data/tasks_1-20_v1-2/en-10k \
