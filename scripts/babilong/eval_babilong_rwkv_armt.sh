@@ -30,7 +30,7 @@ TBS=64
 MEMORY_SIZE=10
 D_MEM=64
 
-MAX_N_SEGMENTSS=(2000 20000)
+MAX_N_SEGMENTSS=(128 256 1000 2000)
 ITERSS=(1 1 1 1 1 1 1 1 1)
 # ITERSS=(1)
 BSS=(1 1 1 1 1 1 1 1)
@@ -110,8 +110,6 @@ accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_
         --d_mem $D_MEM \
         --layers_attr model.blocks \
         --num_mem_tokens $MEMORY_SIZE \
-        --infctx \
-        --infctx_p 0.7 \
         --validate_only \
         --no_denom
         # --freeze_mem
