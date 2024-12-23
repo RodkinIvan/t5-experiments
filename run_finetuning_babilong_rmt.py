@@ -59,7 +59,7 @@ parser.add_argument('--task_dataset', type=str, help="Task name", default="qa1_s
 parser.add_argument('--noise_dataset', type=str, help="Task name", default='wikitext')
 parser.add_argument('--noise_dataset_split', type=str, help="Task name", default=None)
 parser.add_argument('--babi_path', type=str, help="path to babi folder", default="data/tasks_1-20_v1-2/en-10k")
-
+parser.add_argument('--grad_cp',action='store_true', default=False, help='enable gradient_checkpointing')
 
 parser.add_argument('--validate_only', action='store_true', default=False,
                     help='Skip training and run only validation. (default: False)')
@@ -335,7 +335,10 @@ if __name__ == '__main__':
             model = model_cls(config=model_cfg)
         else:
             logger.info(f'Loading pretrained model: {args.from_pretrained}')
-            model = model_cls.from_pretrained(args.from_pretrained)
+            model_args = dict()
+            if args.grad_cp:
+                model_args['grad_cp'] = args.grad_cp
+            model = model_cls.from_pretrained(args.from_pretrained, **model_args)
 
     if args.use_lora:
         peft_config = LoraConfig(
