@@ -83,11 +83,13 @@ class ACT_basic(nn.Module):
             else:
                 # apply transformation on the state
                 state = fn(state, *args, **kwargs)
-                if isinstance(state, tuple) and len(state) > 1:
+                if isinstance(state, tuple):
                     rest = state[1:]
                     state = state[0]
 
             # update running part in the weighted state and keep the rest
+            # print(state.shape, previous_state.shape, update_weights.shape)
+            # print(state.dtype, previous_state.dtype, update_weights.dtype)
             previous_state = ((state * update_weights.unsqueeze(-1)) + (previous_state * (1 - update_weights.unsqueeze(-1))))
             ## previous_state is actually the new_state at end of hte loop 
             ## to save a line I assigned to previous_state so in the next 

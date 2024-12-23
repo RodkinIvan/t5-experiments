@@ -243,8 +243,8 @@ class AdaptiveAssociativeLayerWrapper(AssociativeLayerWrapper):
             max_hop=self.depth
         )
         
-        self.remainders = self.remainders + remainders # 1 - \sum(h_i); L' = L + tau * mean(remainders)
-        self.n_updates = self.n_updates + n_updates
+        self.remainders = self.remainders + remainders.mean() # 1 - \sum(h_i); L' = L + tau * mean(remainders)
+        self.n_updates = self.n_updates + n_updates.mean()
         self.segments_passed = self.segments_passed + 1
         return out
     
@@ -310,8 +310,8 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
             # mem_tokens = out[0]
             self.update_mem(mem_tokens)
             self.first_seg = False
-        self.remainders = self.remainders + remainders # 1 - \sum(h_i); L' = L + tau * mean(remainders)
-        self.n_updates = self.n_updates + n_updates
+        self.remainders = self.remainders + remainders.mean() # 1 - \sum(h_i); L' = L + tau * mean(remainders)
+        self.n_updates = self.n_updates + n_updates.mean()
         self.segments_passed = self.segments_passed + 1
         return out
 

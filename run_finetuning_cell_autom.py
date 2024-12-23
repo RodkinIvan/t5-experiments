@@ -57,6 +57,8 @@ parser.add_argument('--report_to', type=str, default='wandb', help='')
 parser.add_argument('--validate_only', action='store_true', default=False,
                     help='Skip training and run only validation. (default: False)')
 
+parser.add_argument('--output_last_segment_only', action='store_true', default=False,
+                    help='')
 parser.add_argument('--wrap_pos', action='store_true', default=False,
                     help='Wrap positional encoding for memory tokens (default: False)')
 parser.add_argument('--working_dir', type=str, default='.',
@@ -92,6 +94,9 @@ parser.add_argument('--prediction_shift', type=int, default=1, help='num_timeste
 
 parser.add_argument('--repeat_state', action='store_true', default=False,
                     help='repeat state in the input so the input look like: [s0, s1, s1, s2, s2, s3...]')
+
+parser.add_argument('--learn_rule', action='store_true', default=False,
+                    help='learn rule during the training')
 
 parser.add_argument('--dataset_path', type=str, default="irodkin/1dCA_r2s20T20", help="path to saved datasets")
 parser.add_argument('--segment_size', type=int, default=128, help='number of useful tokens in a segment')
@@ -213,7 +218,7 @@ if __name__ == '__main__':
                 if args.repeat_state:
                     batch[i] = {
                         # concatenate input_ids_t for the corresponding steps
-                        'input_ids': [i for t in range(steps-1) if f'input_ids_{t}' in b for i in [sep_token,] + b[f'input_ids_{t}'] + [sep_token,]  + b[f'input_ids_{t+1}']]
+                        'input_ids': [i for t in range(steps-1) if f'input_ids_{t}' in b for i in [sep_token,] + b[f'input_ids_{t}'] + [sep_token,] + b[f'input_ids_{t+1}']]
                     }
                     batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps-1}'] + [sep_token,] + b[f'input_ids_{steps+shift-1}']
                 else:
@@ -222,6 +227,8 @@ if __name__ == '__main__':
                         'input_ids': [i for t in range(steps) if f'input_ids_{t}' in b for i in [sep_token,] + b[f'input_ids_{t}']]
                     }
                     batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps+shift-1}']
+                if args.learn_rule:
+                    batch[i]['input_ids'] = batch[i]['input_ids'] + [sep_token,] + b['rule_ids']
                 batch[i]['labels'] = batch[i]['input_ids'].copy()
                 batch[i]['attention_mask'] = [1 for _ in batch[i]['input_ids']] 
                 
@@ -230,7 +237,7 @@ if __name__ == '__main__':
             attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
             
             labels_mask = torch.zeros_like(input_ids).bool()
-            labels_mask[:, -args.array_size-1:] = True
+            labels_mask[:, -(args.array_size+1+(args.learn_rule)*(args.rule_len+1)):] = True
             collated = {'input_ids': input_ids,
                         'labels': labels, 
                         'attention_mask': attention_mask,
@@ -247,6 +254,8 @@ if __name__ == '__main__':
     logger.info(f'preparing dataset for: {args.task_name}')
     with accelerator.main_process_first():
         train_dataset = load_dataset(args.dataset_path, split='train')
+        args.rule_len = len(train_dataset[0]['rule_ids'])
+        logger.info(f'Rule len: {args.rule_len}')
         valid_dataset = load_dataset(args.dataset_path, split='validation')
         test_dataset = load_dataset(args.dataset_path, split='test')
 
@@ -336,7 +345,15 @@ if __name__ == '__main__':
                                       time_penalty=args.time_penalty
         )
                                     
+        if 'armt' in args.model_path:
 
+            assert args.num_timesteps == args.num_test_timesteps
+            def spliter(x):
+                assert x.size(1) == (args.num_timesteps + 1 - args.repeat_state) * block_size + args.rule_len + 1, f'{x.size(1)} != {(args.num_timesteps + 1 - args.repeat_state) * block_size + args.rule_len + 1}'
+                return [x[:, i*block_size:(i+1)*block_size] for i in range(args.num_timesteps - args.repeat_state)] + [x[:, args.num_timesteps*block_size:],]
+            if args.learn_rule:
+                model.split_tensor = spliter
+        
         ## load cpt of rmt
         if args.model_cpt and args.model_cpt != 'None':
             model_cpt = os.path.join(args.model_cpt, "model_best/pytorch_model.bin")
@@ -419,9 +436,12 @@ if __name__ == '__main__':
         # compute metrics based on stored labels, predictions, ...
         
         metrics = {}
-        y, p = data['labels'][:, -args.array_size:], data['predictions'][:, -args.array_size-1:-1]
+        right = - args.learn_rule * (args.rule_len + 1)
+        left = - args.array_size - args.learn_rule * (args.rule_len + 1)
+        l = data['labels'].size(1)
+        y, p = data['labels'][:, l+left:l+right], data['predictions'][:, left-1:right-1]
 
-        if accelerator.is_main_process == 0 and args.show_valid_examples > 0:
+        if accelerator.is_main_process and args.show_valid_examples > 0:
             for i in range(min(args.show_valid_examples, len(y))):
                 y_ = np.array(y[i])
                 p_ = np.array(p[i])
@@ -457,14 +477,19 @@ if __name__ == '__main__':
         model, optimizer, train_dataloader, valid_dataloader, None)
 
     ### booydar
+
+    fwd_kwargs = dict()
+    if args.output_last_segment_only:
+        fwd_kwargs['output_only_last_segment'] = True
+    
     batch_metrics_fn = lambda _, y: {key: y[key] for key in y.keys() if (('loss' in key) or ('!log' in key))}
     trainer = Trainer(args, accelerator, model, optimizer, train_dataloader, valid_dataloader,
                       keep_for_metrics_fn=keep_for_metrics_fn, metrics_fn=metrics_fn,
                       ###booydar
                       batch_metrics_fn=batch_metrics_fn,
                       stop_metric_condition=lambda m: m >= args.desired_metric,
-                      forward_kwargs={'output_only_last_segment': True}
-                      )
+                      forward_kwargs=fwd_kwargs,
+                    )
 
     # try:
     if not args.validate_only:
