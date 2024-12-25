@@ -205,11 +205,17 @@ if __name__ == '__main__':
     # else:
     #     tokenizer = AutoTokenizer.from_pretrained(args.from_pretrained)
 
+    left = None
+    right = None
+    rule_left = None
+    rule_right = None
+
     import os
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     if args.model_type == 'decoder':
         block_size = (args.segment_size + 1) * (1 + args.repeat_state)
         sep_token, gen_token, eos_token = 100, 101, 102
+        rule_token = 103
 
         def collate_fn(batch, valid=False):
             for i, b in enumerate(batch):
@@ -220,20 +226,27 @@ if __name__ == '__main__':
                         # concatenate input_ids_t for the corresponding steps
                         'input_ids': [i for t in range(steps-1) if f'input_ids_{t}' in b for i in [sep_token,] + b[f'input_ids_{t}'] + [sep_token,] + b[f'input_ids_{t+1}']]
                     }
-                    batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps-1}'] + [sep_token,] + b[f'input_ids_{steps+shift-1}']
+                    if args.learn_rule:
+                        batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b['rule_ids']
+
+                    batch[i]['input_ids'] = batch[i]['input_ids'] + \
+                        [sep_token if args.learn_rule else gen_token,] + \
+                            b[f'input_ids_{steps-1}'] + [sep_token,] + b[f'input_ids_{steps+shift-1}']
+
                 else:
                     batch[i] = {
                         # concatenate input_ids_t for the corresponding steps
                         'input_ids': [i for t in range(steps) if f'input_ids_{t}' in b for i in [sep_token,] + b[f'input_ids_{t}']]
                     }
                     batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps+shift-1}']
-                if args.learn_rule:
-                    batch[i]['input_ids'] = batch[i]['input_ids'] + [sep_token,] + b['rule_ids']
+                    assert not args.learn_rule
                 batch[i]['labels'] = batch[i]['input_ids'].copy()
                 batch[i]['attention_mask'] = [1 for _ in batch[i]['input_ids']] 
                 
             input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
             labels = torch.stack([torch.tensor(b['labels']) for b in batch], dim=0)
+            if args.learn_rule:
+                input_ids[:, rule_left:rule_right] = rule_token
             attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
             
             labels_mask = torch.zeros_like(input_ids).bool()
@@ -260,6 +273,11 @@ if __name__ == '__main__':
         test_dataset = load_dataset(args.dataset_path, split='test')
 
         args.array_size = len(train_dataset[0]['input_ids_0'])
+
+    right = 0
+    left = -args.array_size
+    rule_left = -(2 * args.array_size + 2 + args.rule_len)
+    rule_right = rule_left + args.rule_len
 
     train_rnd_generator = torch.Generator()
     train_rnd_generator.manual_seed(args.seed)
@@ -408,7 +426,7 @@ if __name__ == '__main__':
             #     data['generation_outputs'] = [data['generation_outputs'][i, mask] for i, mask in enumerate(batch['labels_mask'])]
         # if args.model_type == 'encoder':
             
-            ##### booydar
+        ##### booydar
         data['predictions'] = torch.argmax(output['logits'].detach(), dim=-1)
         # data['labels'] = batch['labels']
         for key in batch.keys():
@@ -436,8 +454,6 @@ if __name__ == '__main__':
         # compute metrics based on stored labels, predictions, ...
         
         metrics = {}
-        right = - args.learn_rule * (args.rule_len + 1)
-        left = - args.array_size - args.learn_rule * (args.rule_len + 1)
         l = data['labels'].size(1)
         y, p = data['labels'][:, l+left:l+right], data['predictions'][:, left-1:right-1]
 

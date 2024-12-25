@@ -114,8 +114,8 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --save_best \
         --d_mem $D_MEM \
         --layers_attr gpt_neox.layers \
-        --repeat_state
-        # --learn_rule
+        --repeat_state \
+        --learn_rule
         # --act_on \
         # --max_hop $MAX_HOP \
         # --time_penalty 3e-4 \
