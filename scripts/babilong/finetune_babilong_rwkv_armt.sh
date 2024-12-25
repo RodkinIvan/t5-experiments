@@ -17,7 +17,7 @@ MEMORY_CELL=modeling_amt.language_modeling:AssociativeMemoryCell
 RECURRENT_WRAPPER=modeling_amt.language_modeling:AssociativeRecurrentWrapper
 BACKBONE_CLS=baselines.rwkv.language_modeling:RWKV_v6
 
-TASK_DATASET=qa1_single-supporting-fact
+TASK_DATASET=qa2_two-supporting-facts
 NOISE_DATASET=pg19
 METRIC=exact_match
 
@@ -116,9 +116,8 @@ accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29702 --mixed_
         --d_mem $D_MEM \
         --layers_attr model.blocks \
         --num_mem_tokens $MEMORY_SIZE \
-        --infctx \
-        --infctx_p 0.7 \
-        --no_denom
+        --no_denom \
+        --grad_cp
 done
 done
 echo "done"
