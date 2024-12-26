@@ -188,7 +188,6 @@ class ACTForWholeARMT(nn.Module):
 
 class ACT_transformer(nn.Module):
     def __init__(self, hidden_size, num_heads=4, num_transformer_layers=1, dropout=0.1):
-        super(ACT_transformer, self).__init__()
         # Transformer encoder
         transformer_layer = TransformerEncoderLayer(
             d_model=hidden_size,
@@ -207,6 +206,11 @@ class ACT_transformer(nn.Module):
         self.sigma = nn.Sigmoid()
         self.threshold = 1 - 0.1
 
+    def generate_causal_mask(self, seq_len):
+        mask = torch.triu(torch.ones(seq_len, seq_len), diagonal=1)
+        mask = mask.masked_fill(mask == 1, float('-inf'))
+        return mask
+
     def forward(self, *args, state, inputs, fn, time_enc, pos_enc, max_hop, encoder_output=None, **kwargs):
         batch_size, seq_len, hidden_size = inputs.shape
         halting_probability = torch.zeros(batch_size, seq_len).cuda()
@@ -215,13 +219,20 @@ class ACT_transformer(nn.Module):
         previous_state = torch.zeros_like(inputs).cuda()
         step = 0
         rest = None
+
+        causal_mask = self.generate_causal_mask(seq_len).cuda()
+
         while ((halting_probability < self.threshold) & (n_updates < max_hop)).byte().any():
-            state_transformed = self.transformer(state.permute(1, 0, 2))  # [S, B, H]
+            state_transformed = self.transformer(
+                state.permute(1, 0, 2),  # [S, B, H]
+                mask=causal_mask
+            )  # [S, B, H]
             state_transformed = state_transformed.permute(1, 0, 2)  # [B, S, H]
 
-            # вывод трансформера в линейный слой, как обсуждали
+            # Pass through linear layer and sigmoid
             p = self.sigma(self.logit_ff(state_transformed)).squeeze(-1)  # [B, S]
-            # старался ничего не менять
+
+            # Update halting logic
             still_running = (halting_probability < 1.0).float()
             new_halted = (halting_probability + p * still_running > self.threshold).float() * still_running
             still_running = (halting_probability + p * still_running <= self.threshold).float() * still_running
@@ -249,3 +260,4 @@ class ACT_transformer(nn.Module):
             return previous_state, (remainders, n_updates)
         else:
             return (previous_state, *rest), (remainders, n_updates)
+
