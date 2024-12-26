@@ -237,7 +237,7 @@ if __name__ == '__main__':
             return collated
         return addition_collate_fn
  
-    def ca_collate_fn(batch, valid=False):
+    def ca_collate_fn(batch, valid=False, sample_length=None, array_size=None):
         batch_array_size = args.valid_array_size if valid else args.train_array_size
         for i, b in enumerate(batch):
             steps = args.num_test_timesteps if valid else args.num_timesteps
