@@ -238,8 +238,11 @@ if __name__ == '__main__':
                         # concatenate input_ids_t for the corresponding steps
                         'input_ids': [i for t in range(steps) if f'input_ids_{t}' in b for i in [sep_token,] + b[f'input_ids_{t}']]
                     }
-                    batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps+shift-1}']
-                    assert not args.learn_rule
+                    if args.learn_rule:
+                        batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b['rule_ids'] + [sep_token,] + b[f'input_ids_{steps+shift-1}']
+                    else:
+                        batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps+shift-1}']
+                    # assert not args.learn_rule
                 batch[i]['labels'] = batch[i]['input_ids'].copy()
                 batch[i]['attention_mask'] = [1 for _ in batch[i]['input_ids']] 
                 
@@ -276,7 +279,7 @@ if __name__ == '__main__':
 
     right = 0
     left = -args.array_size
-    rule_left = -(2 * args.array_size + 2 + args.rule_len)
+    rule_left = -(2 * args.array_size + 2 + args.rule_len) + (1 - args.repeat_state) * (args.array_size + 1)
     rule_right = rule_left + args.rule_len
 
     train_rnd_generator = torch.Generator()
