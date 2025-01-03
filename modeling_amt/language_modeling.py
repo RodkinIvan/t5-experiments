@@ -55,10 +55,19 @@ class AssociativeLayerWrapper(torch.nn.Module):
         # torch.nn.init.zeros_(self.W_mq.weight)
         self.W_mk = torch.nn.Linear(d_model, d_mem, bias=False)
         self.W_mv = torch.nn.Linear(d_model, d_model, bias=False)
+
+        
         if gating:
             self.W_mb = torch.nn.Linear(d_model, d_model)
         else:
             self.W_mb = torch.nn.Linear(d_model, n_heads)
+
+        s = 1/math.sqrt(d_model)
+        torch.nn.init.uniform_(self.W_mq.weight, -s, s)
+        torch.nn.init.uniform_(self.W_mk.weight, -s, s)
+        torch.nn.init.uniform_(self.W_mb.weight, -s, s)
+
+
         torch.nn.init.zeros_(self.W_mv.weight)
 
         self.W_mem = torch.zeros(1, n_heads ,self.d_key // n_heads, d_model // n_heads)
