@@ -63,9 +63,9 @@ class AssociativeLayerWrapper(torch.nn.Module):
             self.W_mb = torch.nn.Linear(d_model, n_heads)
 
         s = 1/math.sqrt(d_model)
-        torch.nn.init.uniform_(self.W_mq.weight, -s, s)
-        torch.nn.init.uniform_(self.W_mk.weight, -s, s)
-        torch.nn.init.uniform_(self.W_mb.weight, -s, s)
+        # torch.nn.init.uniform_(self.W_mq.weight, -s, s)
+        # torch.nn.init.uniform_(self.W_mk.weight, -s, s)
+        # torch.nn.init.uniform_(self.W_mb.weight, -s, s)
 
 
         torch.nn.init.zeros_(self.W_mv.weight)
