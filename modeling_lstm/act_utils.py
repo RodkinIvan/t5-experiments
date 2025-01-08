@@ -31,11 +31,11 @@ class ACT_basic(nn.Module):
         self.p.bias.data.fill_(1) 
         self.threshold = 1 - 0.1
 
-    def forward(self, *args, state, inputs, fn, time_enc, pos_enc, max_hop,  encoder_output=None, **kwargs):
+    def forward(self, *args, state, inputs, fn, time_enc, pos_enc, max_hop, encoder_output=None, constant_depth=False, **kwargs):
         # init_hdd
         ## [B, S]
         halting_probability = torch.zeros(inputs.shape[0],inputs.shape[1]).cuda()
-
+        print("INPUTS SHAPE", inputs.shape)
         ## [B, S]
         remainders = torch.zeros(inputs.shape[0],inputs.shape[1]).cuda()
         ## [B, S]
@@ -43,14 +43,17 @@ class ACT_basic(nn.Module):
         ## [B, S, HDD]
         previous_state = torch.zeros_like(inputs).cuda()
         step = 0
+
         # for l in range(self.num_layers):
         rest = None
-        while( ((halting_probability<self.threshold) & (n_updates < max_hop)).byte().any()):
+        while ((n_updates < max_hop)).byte().any() and (constant_depth or (halting_probability < self.threshold)):
+        # while( ((halting_probability<self.threshold) & (n_updates < max_hop)).byte().any()):
             # Add timing signal
             # state = state + time_enc[:, :inputs.shape[1], :].type_as(inputs.data)
             # state = state + pos_enc[:, step, :].unsqueeze(1).repeat(1,inputs.shape[1],1).type_as(inputs.data)
 
             p = self.sigma(self.p(state)).squeeze(-1)
+            print("P shape", p.shape)
             # Mask for inputs which have not halted yet
             still_running = (halting_probability < 1.0).float()
 
@@ -62,7 +65,11 @@ class ACT_basic(nn.Module):
 
             # Add the halting probability for this step to the halting
             # probabilities for those input which haven't halted yet
-            halting_probability = halting_probability + p * still_running
+            # print("N_UPDATES", n_updates)
+            if constant_depth and (n_updates == max_hop).byte().any():
+                halting_probability = halting_probability + np.ones(shape=p.shape) * still_running
+            else:
+                halting_probability = halting_probability + p * still_running
 
             # Compute remainders for the inputs which halted at this step
             remainders = remainders + new_halted * (1 - halting_probability)
@@ -105,13 +112,15 @@ class AdaptiveLayerWrapper(nn.Module):
     def __init__(self, 
                  layer, 
                  d_model, 
-                 max_hop,                 
+                 max_hop, 
+                 constant_depth=False,                
                 ) -> None:
         super().__init__()
-        self.act = ACT_basic(d_model)
+        self.act = ACT_basic(d_model,)
         self.depth = max_hop
         self.max_length = 1024
         self.layer = layer
+        self.constant_depth = constant_depth
 
         self.timing_signal = gen_timing_signal(self.max_length, d_model)
         ## for t
@@ -134,6 +143,7 @@ class AdaptiveLayerWrapper(nn.Module):
             time_enc=self.timing_signal,
             pos_enc=self.position_signal,
             max_hop=self.depth,
+            constant_depth=self.constant_depth,
             **kwargs
         )
 

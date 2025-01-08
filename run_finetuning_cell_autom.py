@@ -157,6 +157,7 @@ parser.add_argument('--relative_step', action='store_true', default=False,
 parser.add_argument('--warmup_init', action='store_true', default=False,
                     help='Adafactor warmup_init (default: False)')
 
+parser.add_argument('--constant_depth', type=bool, default=False, help='ACT depth type')
 
 from tqdm.auto import tqdm
 
@@ -279,6 +280,7 @@ if __name__ == '__main__':
             model_cfg['max_hop'] = args.max_hop
             model_cfg['act_type'] = args.act_type
             model_cfg['time_penalty'] = args.time_penalty
+            model_cfg['constant_depth'] = args.constant_depth
         model = model_cls(config=model_cfg)
     else:
         logger.info(f'Loading pretrained model: {args.from_pretrained}')

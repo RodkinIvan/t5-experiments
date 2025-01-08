@@ -27,6 +27,7 @@ class DoubleLSTMModel(nn.Module):
         self.num_layers = self.config['num_layers']
         self.act_on = self.config['act_on']
         self.act_type = self.config['act_type']
+        self.constant_depth = self.config['constant_depth']
 
         self.embedding = nn.Embedding(self.vocab_size, self.embedding_dim)
         if not self.act_on:
@@ -44,7 +45,7 @@ class DoubleLSTMModel(nn.Module):
         if self.act_on:
             self.max_hop = self.config['max_hop']
             for i in range(len(self.lstm_layer)):
-                self.lstm_layer[i] = AdaptiveLayerWrapper(self.lstm_layer[i], self.hidden_size, self.max_hop)
+                self.lstm_layer[i] = AdaptiveLayerWrapper(self.lstm_layer[i], self.hidden_size, self.max_hop, self.constant_depth)
 
 
         self.fc = nn.Linear(self.hidden_size, self.vocab_size)
