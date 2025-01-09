@@ -9,7 +9,7 @@ from munch import Munch
 import os
 
 from modeling_amt.act_utils import ACT_basic, gen_timing_signal
-from baselines.rwkv.language_modeling import RWKVModel
+# from baselines.rwkv.language_modeling import RWKVModel
 
 def dpfp(x, nu=1):
   x = torch.cat([r(x), r(-x)], dim=-1)
@@ -318,7 +318,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                  base_model, 
                  num_mem_tokens, 
                  d_mem, 
-                 layers_attr: str = 'transformer.h', 
+                 layers_attr: str = 'model.layers', 
                  wrap_pos=False, 
                  correction=True, 
                  n_heads=1, 
@@ -327,12 +327,15 @@ class AssociativeMemoryCell(torch.nn.Module):
                  freeze_mem=False,
                  act_on=False,
                  max_hop=4,
-                 act_type='associative'
+                 act_type='associative',
+                 attend_to_previous_input=False
         ):
         super().__init__()
         self.model = base_model
+        self.attend_to_previous_input = attend_to_previous_input
+        self.previous_input = None
 
-        self.RWKV_ARMT = isinstance(self.model, RWKVModel)
+        self.RWKV_ARMT = False #isinstance(self.model, RWKVModel)
 
         self.num_mem_tokens = num_mem_tokens
         self.d_mem = d_mem
@@ -408,8 +411,13 @@ class AssociativeMemoryCell(torch.nn.Module):
         for layer in self.layers:
             layer.zero_mem()
             pass
+        self.previous_input = None
 
     def forward(self, input_ids, labels=None, labels_mask=None, zero_mem=False, **kwargs):
+        current_input_ids = input_ids.clone()
+        if self.attend_to_previous_input and self.previous_input is not None:
+            input_ids = torch.cat([self.previous_input, input_ids], dim=1)
+        
         if zero_mem:
             self.zero_mem()
 
@@ -440,8 +448,10 @@ class AssociativeMemoryCell(torch.nn.Module):
         else:
             out = self.model(**seg_kwargs)
 
+        if self.attend_to_previous_input and self.previous_input is not None:
+            out['logits'] = out['logits'][:, self.previous_input.size(1):]
         out = self.process_output(out, labels, labels_mask, **kwargs)
-
+        self.previous_input = current_input_ids
         return out
 
     def process_input(self, input_ids, **kwargs):
@@ -455,7 +465,7 @@ class AssociativeMemoryCell(torch.nn.Module):
         seg_kwargs['input_ids'] = None
         seg_kwargs['inputs_embeds'] = inputs_embeds
         if kwargs.get('attention_mask') is not None:
-            seg_kwargs['attention_mask'] = self.pad_attention_mask(kwargs['attention_mask'], inputs_embeds.shape)
+            seg_kwargs['attention_mask'] = self.pad_attention_mask(kwargs['attention_mask'])
             if kwargs.get('prev_attn_mask') is not None:
                 seg_kwargs['attention_mask'] = torch.cat([kwargs['prev_attn_mask'], seg_kwargs['attention_mask']], dim=-1)
             if 'prev_attn_mask' in seg_kwargs:
@@ -472,11 +482,13 @@ class AssociativeMemoryCell(torch.nn.Module):
             ]).long().unsqueeze(0)
         return seg_kwargs
     
-    def pad_attention_mask(self, attention_mask, shape):
+    def pad_attention_mask(self, attention_mask):
         if self.num_mem_tokens in {0, None}:
             return attention_mask
         else:
-            mask = torch.ones(*shape[:2], dtype=torch.int64).to(attention_mask.device)
+            shape = list(attention_mask.shape)
+            shape[1] += self.num_mem_tokens
+            mask = torch.ones(*shape, dtype=torch.int64).to(attention_mask.device)
             mask[:, :-self.num_mem_tokens] = attention_mask
             return mask
     
@@ -548,6 +560,7 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
                 ):
         
         sliding_window = self.rmt_config['sliding_window'] if 'sliding_window' in self.rmt_config else False
+        attend_to_previous_input = self.rmt_config['attend_to_previous_input'] if 'attend_to_previous_input' in self.rmt_config else False
         if input_segmented:
             n_segs = input_ids.shape[1] if not (input_ids is None) else inputs_embeds.shape[1]
             segmented = [dict(
@@ -582,8 +595,9 @@ class AssociativeRecurrentWrapper(torch.nn.Module):
             cell_out = self.memory_cell(**segment)
             if 'state' in cell_out:
                 state = cell_out['state']
-            if sliding_window:
+            if sliding_window or attend_to_previous_input:
                 prev_attn_mask = segment['attention_mask'] * torch.triu(torch.ones_like(segment['attention_mask']))
+            if sliding_window:
                 past_key_values = [
                     [
                         k_or_v[..., -(num_mem_tokens+seg_len):k_or_v.size(-2)-num_mem_tokens, :].detach() 
