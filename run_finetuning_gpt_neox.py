@@ -237,7 +237,7 @@ if __name__ == '__main__':
             return collated
         return addition_collate_fn
  
-    def ca_collate_fn(batch, valid=False, sample_length=None, array_size=None):
+    def ca_collate_fn(batch, valid=False):
         batch_array_size = args.valid_array_size if valid else args.train_array_size
         for i, b in enumerate(batch):
             steps = args.num_test_timesteps if valid else args.num_timesteps
@@ -289,22 +289,38 @@ if __name__ == '__main__':
     per_worker_batch_size = args.batch_size * args.gradient_accumulation_steps
     kwargs = {'pin_memory': True, 'num_workers': args.data_n_workers}
 
-    train_dataloader = DataLoader(
-        train_dataset, batch_size=per_worker_batch_size, generator=train_rnd_generator,
-        collate_fn=lambda x: collate_fn(x, sample_length=args.sample_length, array_size=args.train_array_size),
-        **kwargs, drop_last=True
-    )
-    valid_dataloader = DataLoader(
-        valid_dataset, batch_size=per_worker_batch_size,
-        collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
-        **kwargs, drop_last=True
-    )
-    test_dataloader = DataLoader(
-        test_dataset, batch_size=per_worker_batch_size,
-        collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
-        **kwargs, drop_last=True
-    )
-
+    if args.dataset_name == 'ca':
+        train_dataloader = DataLoader(
+            train_dataset, batch_size=per_worker_batch_size, generator=train_rnd_generator,
+            collate_fn=lambda x: collate_fn(x),
+            **kwargs, drop_last=True
+        )
+        valid_dataloader = DataLoader(
+            valid_dataset, batch_size=per_worker_batch_size,
+            collate_fn=lambda x: collate_fn(x),
+            **kwargs, drop_last=True
+        )
+        test_dataloader = DataLoader(
+            test_dataset, batch_size=per_worker_batch_size,
+            collate_fn=lambda x: collate_fn(x),
+            **kwargs, drop_last=True
+        )
+    else:
+        train_dataloader = DataLoader(
+            train_dataset, batch_size=per_worker_batch_size, generator=train_rnd_generator,
+            collate_fn=lambda x: collate_fn(x, sample_length=args.sample_length, array_size=args.train_array_size),
+            **kwargs, drop_last=True
+        )
+        valid_dataloader = DataLoader(
+            valid_dataset, batch_size=per_worker_batch_size,
+            collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
+            **kwargs, drop_last=True
+        )
+        test_dataloader = DataLoader(
+            test_dataset, batch_size=per_worker_batch_size,
+            collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
+            **kwargs, drop_last=True
+        )
     if args.valid_interval is None:
         args.valid_interval = args.log_interval
 
