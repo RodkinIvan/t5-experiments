@@ -237,8 +237,7 @@ if __name__ == '__main__':
             return collated
         return addition_collate_fn
  
-    def ca_collate_fn(batch, valid=False):
-        batch_array_size = args.valid_array_size if valid else args.train_array_size
+    def ca_collate_fn(batch, sample_length=False, array_size=args.valid_array_size, valid=False):
         for i, b in enumerate(batch):
             steps = args.num_test_timesteps if valid else args.num_timesteps
             shift = args.prediction_shift
@@ -263,7 +262,7 @@ if __name__ == '__main__':
         attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
         
         labels_mask = torch.zeros_like(input_ids).bool()
-        labels_mask[:, -batch_array_size-1:] = True
+        labels_mask[:, -array_size-1:] = True
         collated = {
             'input_ids': input_ids,
             'labels': labels, 
