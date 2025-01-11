@@ -8,7 +8,7 @@ import numpy as np
 import transformers
 from datasets import load_dataset
 from torch.utils.data import DataLoader
-from lm_experiments_tools import  Trainer,  TrainerArgs
+from lm_experiments_tools import Trainer, TrainerArgs
 from transformers import AutoConfig, HfArgumentParser
 from lm_experiments_tools.utils import get_cls_by_name, get_optimizer, prepare_run
 import lm_experiments_tools.optimizers as optimizers
@@ -29,7 +29,7 @@ if os.environ.get('CUDA_VISIBLE_DEVICES', None) is None:
 
 parser = HfArgumentParser(TrainerArgs)
 parser.add_argument('--task_name', type=str, help='Scrolls task name: "gov_report", "summ_screen_fd", "qmsum", '
-                                                  '"narrative_qa", "qasper", "quality", "contract_nli"')
+                                                  '"narrative_qa", "qasper", "quality", "contract_nli", "ca_adaptive", ...')
 parser.add_argument('--report_to', type=str, default='wandb', help='')
 parser.add_argument('--validate_only', action='store_true', default=False,
                     help='Skip training and run only validation. (default: False)')
@@ -73,7 +73,6 @@ parser.add_argument('--max_hop', type=int, default=4, help='number of cycles in 
 parser.add_argument('--time_penalty', type=float, default=0.0, help='time penalty coefficient in ACT loss')
 parser.add_argument('--act_type', type=str, default=None, help='what is in ACT (options: layer, associative)')
 
-
 parser.add_argument('--no_denom', action='store_true', default=False,
                     help='use no denominator in ARMT')
 parser.add_argument('--freeze_mem', action='store_true', default=False,
@@ -104,6 +103,8 @@ parser.add_argument('--relative_step', action='store_true', default=False,
                     help='Adafactor relative_step (default: False)')
 parser.add_argument('--warmup_init', action='store_true', default=False,
                     help='Adafactor warmup_init (default: False)')
+parser.add_argument('--num_given', type=int, default=10, help='number of given states')
+parser.add_argument('--num_predict', type=int, default=4, help='number of predicted states')
 
 
 if __name__ == '__main__':
@@ -117,7 +118,7 @@ if __name__ == '__main__':
     accelerator = accelerate.Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
 
     args.block_size = (args.segment_size + 1) * (1 + args.repeat_state)
-    sep_token, gen_token, eos_token = 100, 101, 102
+    sep_token, gen_token, eos_token, mask_token = 100, 101, 102, 103
     
     logger = get_logger('')
     logger.info(args.model_cls)
@@ -129,12 +130,7 @@ if __name__ == '__main__':
 
     dataset_name_to_path = {
         "ca": "irodkin/1dCA_r2s20T20",
-        "reverse_binary": "steeldream/binary",
-        "reverse_decimal": "steeldream/decimal",
-        "copy_binary": "steeldream/binary",
-        "copy_decimal": "steeldream/decimal",
-        "addition_binary": "steeldream/addition_binary",
-        "addition_decimal": "steeldream/addition_decimal",
+        # put your dataset_name -> dataset_path mappings here
     }
     dataset_path = dataset_name_to_path[args.dataset_name]
 
@@ -156,113 +152,38 @@ if __name__ == '__main__':
             raise ValueError('Unknown dataset name')
 
     prepare_run(args, logger, logger_fmt)
-
-    def copy_collate_fn(batch, min_length=5, array_size=40, sample_length=False, reverse=False):
-        batch_array_size = random.randint(min_length, array_size) if sample_length else array_size
-
-        for i, b in enumerate(batch):
-            X1 = b['input_ids'][:batch_array_size]
-            X2 = X1[::-1] if reverse else X1
-            batch[i] = {
-                'input_ids': [eos_token] + X1 + [gen_token] + X2 ,
-                'labels': [eos_token] +  X1 + [gen_token] + X2 ,
-                'attention_mask': [1] * (2 * batch_array_size + 2)
-            }
-        
-        input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
-        labels = torch.stack([torch.tensor(b['labels']) for b in batch], dim=0)
-        attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
-    
-        labels_mask = torch.zeros_like(input_ids).bool()
-        labels_mask[:, -batch_array_size-1:] = True
-        B, L = input_ids.shape
-        if 'armt' in args.model_path:
-            input_ids = input_ids.reshape(B, 2, L // 2)
-            labels = labels.reshape(B, 2, L // 2)
-            labels_mask = labels_mask.reshape(B, 2, L // 2)
-            attention_mask = attention_mask.reshape(B, 2, L // 2)
-        collated = {
-            'input_ids': input_ids,
-            'labels': labels,
-            'attention_mask': attention_mask,
-            'labels_mask': labels_mask,
-        }
-        return collated
-
-    def reverse_collate_fn(batch, min_length=5, array_size=40, sample_length=False):
-        return copy_collate_fn(batch, min_length, array_size, sample_length, reverse=True)
-        
-    def addition_collate_fn_with_base(base):
-        def addition_collate_fn(batch, min_length=5, array_size=40, sample_length=False):
-            batch_array_size = array_size if sample_length else random.randint(min_length, array_size) 
-            
-            def perform_addition(X1, X2):
-                Y = [0] * (batch_array_size + 1)
-                carry = 0
-                for i in range(batch_array_size):
-                    Y[i] = (X1[i] + X2[i] + carry) % base
-                    carry = (X1[i] + X2[i] + carry) // base
-                Y[-1] = carry
-                return Y
-
-            for i, b in enumerate(batch):
-                X1 = b['input_ids_0'][:batch_array_size]
-                X2 = b['input_ids_1'][:batch_array_size]
-                Y = perform_addition(X1, X2)
-                batch[i] = {
-                    'input_ids': [eos_token]*2+ X1 + [sep_token]*2 + X2 + [gen_token] + Y,
-                    'labels': [eos_token]*2 + X1 + [sep_token]*2 + X2 + [gen_token] + Y,
-                    'attention_mask': [1] * (3 * batch_array_size + 6)
-                }
-            
-            input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
-            labels = torch.stack([torch.tensor(b['labels']) for b in batch], dim=0)
-            attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
-        
-            labels_mask = torch.zeros_like(input_ids).bool()
-            labels_mask[:, -batch_array_size-2:] = True
-
-            B, L = input_ids.shape
-            if 'armt' in args.model_path:
-                input_ids = input_ids.reshape(B, 3, L // 3)
-                labels = labels.reshape(B, 3, L // 3)
-                labels_mask = labels_mask.reshape(B, 3, L // 3)
-                attention_mask = attention_mask.reshape(B, 3, L // 3)
-            collated = {
-                'input_ids': input_ids,
-                'labels': labels,
-                'attention_mask': attention_mask,
-                'labels_mask': labels_mask,
-            }
-            return collated
-        return addition_collate_fn
  
-    def ca_collate_fn(batch, sample_length=False, array_size=args.valid_array_size, valid=False):
+    # --- Collate function for the "ca_oo" task ---
+    def ca_oo_collate_fn(
+        batch,
+        array_size,
+        num_given=args.num_given,
+        num_predict=args.num_predict,
+        valid=False,
+    ):
         for i, b in enumerate(batch):
-            steps = args.num_test_timesteps if valid else args.num_timesteps
-            shift = args.prediction_shift
-            if args.repeat_state:
-                batch[i] = {
-                    'input_ids': [i for t in range(steps-1) if f'input_ids_{t}' in b \
-                                  for i in [sep_token,] + b[f'input_ids_{t}'] + [sep_token,]  + b[f'input_ids_{t+1}']]
-                }
-                batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps-1}'] + \
-                    [sep_token,] + b[f'input_ids_{steps+shift-1}']
-            else:
-                batch[i] = {
-                    'input_ids': [i for t in range(steps) if f'input_ids_{t}' in b \
-                                  for i in [sep_token,] + b[f'input_ids_{t}']]
-                }
-                batch[i]['input_ids'] = batch[i]['input_ids'] + [gen_token,] + b[f'input_ids_{steps+shift-1}']
-            batch[i]['labels'] = batch[i]['input_ids'].copy()
-            batch[i]['attention_mask'] = [1 for _ in batch[i]['input_ids']] 
+            input_ids_seq = []
+            for t in range(num_given):
+                input_ids_seq += [sep_token] + b[f'input_ids_{t}']
+
+            input_ids_seq += [gen_token]
+            labels_seq = input_ids_seq.copy()
+
+            for t in range(num_given, num_given + num_predict):
+                input_ids_seq += [mask_token] * array_size + [sep_token]
+                labels_seq += b[f'input_ids_{t}'] + [sep_token]
+
+            batch[i]['input_ids'] = input_ids_seq
+            batch[i]['labels'] = labels_seq
+            batch[i]['attention_mask'] = [1] * len(input_ids_seq)
             
         input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
         labels = torch.stack([torch.tensor(b['labels']) for b in batch], dim=0)
         attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
-        
+
+        # store a mask region for the labels
         labels_mask = torch.zeros_like(input_ids).bool()
-        labels_mask[:, -array_size-1:] = True
+        labels_mask[:, -(num_predict * array_size + num_predict):] = True
         collated = {
             'input_ids': input_ids,
             'labels': labels, 
@@ -271,17 +192,79 @@ if __name__ == '__main__':
         }
         return collated
 
+    # --- Collate function for the "ca_adaptive" task ---
+    def ca_adaptive_collate_fn(
+        batch,
+        array_size,
+        num_given=args.num_given,  # how many states are "given" at the start
+        valid=False,
+    ):
+        # mapping from shift to special token
+        shift2token = {
+            1: 106,
+            2: 107,
+            3: 108,
+            4: 109,
+        }
+
+        # We'll store the shift for each item so that we can compute metrics later
+        for i, b in enumerate(batch):
+            input_ids_seq = []
+            for t in range(num_given):
+                input_ids_seq += [sep_token] + b[f'input_ids_{t}']
+
+            # If we're in validation, do something deterministic:
+            if valid:
+                # For instance, pick shift = (i % 4) + 1
+                shift = (i % 4) + 1
+            else:
+                # Training can remain random
+                shift = random.randint(1, 4)
+            
+            # Save the shift in this sample so that we can retrieve it later
+            b['shift'] = shift
+
+            shift_token_id = shift2token[shift]
+            # (num_given + shift) is presumably the next state to reveal
+            input_ids_seq += [shift_token_id, gen_token] + b[f'input_ids_{num_given + shift}']
+
+            labels_seq = input_ids_seq.copy()
+
+            b['input_ids'] = input_ids_seq
+            b['labels'] = labels_seq
+            b['attention_mask'] = [1] * len(input_ids_seq)
+
+        # Collate the batch
+        input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
+        labels = torch.stack([torch.tensor(b['labels']) for b in batch], dim=0)
+        attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
+
+        # Mark the region where labels apply
+        labels_mask = torch.zeros_like(input_ids).bool()
+        labels_mask[:, -array_size - 1:] = True
+
+        # We also want to keep track of the shift in the final collated batch. 
+        # We can store it as a tensor that parallels the batch dimension.
+        shifts = torch.tensor([b['shift'] for b in batch], dtype=torch.long)
+
+        collated = {
+            'input_ids': input_ids,
+            'labels': labels,
+            'attention_mask': attention_mask,
+            'labels_mask': labels_mask,
+            'shift': shifts,  # <--- so we can see each sample's shift
+        }
+        return collated
+
+
+    # dictionary of collate functions:
     collate_fn_dict = {
-        "ca": ca_collate_fn,
-        "reverse_binary": reverse_collate_fn,
-        "reverse_decimal": reverse_collate_fn,
-        "copy_binary": copy_collate_fn,
-        "copy_decimal": copy_collate_fn,
-        "addition_binary": addition_collate_fn_with_base(2),
-        "addition_decimal": addition_collate_fn_with_base(10),
+        "ca_oo": ca_oo_collate_fn,
+        "ca_adaptive": ca_adaptive_collate_fn,
+        # add others if needed
     }
 
-    collate_fn = collate_fn_dict[args.dataset_name]
+    collate_fn = collate_fn_dict[args.task_name]
 
     train_rnd_generator = torch.Generator()
     train_rnd_generator.manual_seed(args.seed)
@@ -290,17 +273,17 @@ if __name__ == '__main__':
 
     train_dataloader = DataLoader(
         train_dataset, batch_size=per_worker_batch_size, generator=train_rnd_generator,
-        collate_fn=lambda x: collate_fn(x, sample_length=args.sample_length, array_size=args.train_array_size),
+        collate_fn=lambda x: collate_fn(x, array_size=args.train_array_size, valid=False),
         **kwargs, drop_last=True
     )
     valid_dataloader = DataLoader(
         valid_dataset, batch_size=per_worker_batch_size,
-        collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
+        collate_fn=lambda x: collate_fn(x, array_size=args.valid_array_size, valid=True),
         **kwargs, drop_last=True
     )
     test_dataloader = DataLoader(
         test_dataset, batch_size=per_worker_batch_size,
-        collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
+        collate_fn=lambda x: collate_fn(x, array_size=args.valid_array_size, valid=True),
         **kwargs, drop_last=True
     )
 
@@ -318,29 +301,26 @@ if __name__ == '__main__':
         logger.info(f'Loading pretrained model: {args.from_pretrained}')
         model = model_cls.from_pretrained(args.from_pretrained)
     
-    ## load cpt of backbone model
+    # load backbone checkpoint if needed
     if args.backbone_cpt:
         backbone_cpt = os.path.join(args.backbone_cpt, "model_best.pth")
         cpt = torch.load(backbone_cpt, map_location='cpu')
         model.load_state_dict(cpt['model_state_dict'])
         logger.info(f'Loaded baseline state dict from: {args.backbone_cpt}')
 
-    # Pass memory settings to pretrained model 
+    # Wrap with memory cell if needed
     memory_cell_cls = get_cls_by_name(args.memory_cell_cls)
     recurrent_wrapper_cls = get_cls_by_name(args.recurrent_wrapper_cls)
     logger.info(f'Wrapping in: {memory_cell_cls} and {recurrent_wrapper_cls}')
     
     mem_cell_args = dict(base_model=model)
-
     if args.d_mem is not None:
         mem_cell_args['d_mem'] = args.d_mem
-
     if args.act_on:
         mem_cell_args['act_on'] = args.act_on
         mem_cell_args['max_hop'] = args.max_hop
         if args.act_type is not None:
             mem_cell_args['act_type'] = args.act_type
-
     if args.num_mem_tokens is not None:
         mem_cell_args['num_mem_tokens'] = args.num_mem_tokens
         mem_cell_args['wrap_pos'] = args.wrap_pos
@@ -350,21 +330,21 @@ if __name__ == '__main__':
         mem_cell_args['use_denom'] = not args.no_denom
     if args.freeze_mem:
         mem_cell_args['freeze_mem'] = args.freeze_mem
-
     if args.no_correction:
         mem_cell_args['correction'] = False
 
     cell = memory_cell_cls(**mem_cell_args)
-    model = recurrent_wrapper_cls(cell, 
-                                    segment_size=args.block_size,
-                                    max_n_segments=args.max_n_segments, 
-                                    k2=args.k2,
-                                    segment_alignment=args.segment_alignment,
-                                    act_on=args.act_on,
-                                    time_penalty=args.time_penalty
+    model = recurrent_wrapper_cls(
+        cell,
+        segment_size=args.block_size,
+        max_n_segments=args.max_n_segments,
+        k2=args.k2,
+        segment_alignment=args.segment_alignment,
+        act_on=args.act_on,
+        time_penalty=args.time_penalty
     )
                                 
-    ## load cpt of rmt
+    # load RMT checkpoint if needed
     if args.model_cpt and args.model_cpt != 'None':
         model_cpt = os.path.join(args.model_cpt, "model_best/pytorch_model.bin")
         cpt = torch.load(model_cpt, map_location='cpu')
@@ -373,11 +353,10 @@ if __name__ == '__main__':
 
     if args.freeze_model_weights:
         for n, p in model.named_parameters():
-            # if 'memory' not in n and 'wte' not in n:
             if 'memory' not in n and 'lora' not in n:
                 p.requires_grad = False
-        logger.info(f'Frozen moodel weights')
-        logger.info(f'Remaining parameters: {[n for n, p in model.named_parameters() if p.requires_grad]}')
+        logger.info(f'Frozen model weights')
+        logger.info(f'Remaining trainable parameters: {[n for n, p in model.named_parameters() if p.requires_grad]}')
 
     optimizer_cls = get_optimizer(args.optimizer)
     if optimizer_cls is None:
@@ -386,12 +365,13 @@ if __name__ == '__main__':
     logger.info(f'Using optimizer class: {optimizer_cls}')
 
     if optimizer_cls in [transformers.optimization.Adafactor, optimizers.Adafactor]:
-        # https://github.com/huggingface/transformers/pull/9751/files -> transformers 4.3.0
-        optimizer = optimizer_cls(model.parameters(), lr=args.lr,
-                                  scale_parameter=args.scale_parameter,
-                                  relative_step=args.relative_step,
-                                  warmup_init=args.warmup_init,
-                                  weight_decay=args.weight_decay)
+        optimizer = optimizer_cls(
+            model.parameters(), lr=args.lr,
+            scale_parameter=args.scale_parameter,
+            relative_step=args.relative_step,
+            warmup_init=args.warmup_init,
+            weight_decay=args.weight_decay
+        )
     else:
         optimizer = optimizer_cls(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
@@ -400,7 +380,12 @@ if __name__ == '__main__':
         data = {}
         data['labels'] = batch['labels']
         data['labels_mask'] = batch['labels_mask']
-        
+
+        # Shift is stored ONLY for ca_adaptive in our code, but won't break for other tasks
+        # so we can just keep it if it exists:
+        if 'shift' in batch:
+            data['shift'] = batch['shift']
+
         if 'generation_outputs' in output:
             data['generation_outputs'] = output['generation_outputs']
         data['predictions'] = torch.argmax(output['logits'].detach(), dim=-1)
@@ -412,56 +397,135 @@ if __name__ == '__main__':
             data['remainders'] = output['remainders']
         return data
     
-
+    
     def batch_metrics_fn(batch, output):
         data = keep_for_metrics_fn(batch, output)
 
+        # We only have "ca_oo" and "ca_adaptive" tasks
+        # For "ca", we still rely on array_size from valid_array_size
         if args.dataset_name == "ca":
             array_size = args.valid_array_size
-        if args.dataset_name in ["reverse_binary", "reverse_decimal", "copy_binary", "copy_decimal"]:
-            array_size = data['labels'][0].shape[0] // 2 - 1 if 'armt' not in args.model_path else data['labels'][0].shape[-1] - 1
-        if args.dataset_name in ["addition_binary", "addition_decimal"]:
-            array_size = data['labels'][0].shape[0] // 3 - 1 if 'armt' not in args.model_path else data['labels'][0].shape[-1] - 1
+
+        # figure out how many states are predicted, and how large the predicted region is
+        if args.task_name == "ca_adaptive":
+            # for ca_adaptive, we predict exactly 1 state
+            num_predict = 1
+            total_pred_size = array_size
+        elif args.task_name == "ca_oo":
+            # for ca_oo, we have multiple predicted states
+            num_predict = args.num_predict
+            total_pred_size = num_predict * (array_size + 1)
+        else:
+            raise ValueError(f'Unknown task_name: {args.task_name}')
 
         metrics = {}
-        y = data['labels'][:, -array_size:] if 'armt' not in args.model_path else data['labels'][:, -1, -array_size:]
-        p = data['predictions'][:, -array_size-1:-1]
 
-        metrics['bit_accuracy'] = np.mean((y.cpu().numpy()) == (p.cpu().numpy()))
-        metrics['exact_match'] = np.mean([np.array_equal(p_, y_) for p_, y_ in zip(p.cpu().numpy(), y.cpu().numpy())])
-
-        if 'loss' in output:
-            metrics['loss'] = output['loss'].mean().item()  # Store the loss
+        # region of reference ( ground truth ), same for ARMT or other variants
+        if 'armt' not in args.model_path:
+            y = data['labels'][:, -total_pred_size:]
+        else:
+            # The original code had a separate condition, but it was effectively the same slice
+            y = data['labels'][:, -total_pred_size:]
         
+        # region of predictions
+        # shift by -1 because we typically ignore the last token for next-token prediction
+        p = data['predictions'][:, -total_pred_size - 1 : -1]
+
+        # ==============
+        # Overall metrics
+        # ==============
+        # 1) bit_accuracy
+        metrics['bit_accuracy'] = np.mean((y.cpu().numpy()) == (p.cpu().numpy()))
+        # 2) exact_match
+        metrics['exact_match'] = np.mean([
+            np.array_equal(p_, y_) for p_, y_ in zip(p.cpu().numpy(), y.cpu().numpy())
+        ])
+
+        # ================================================
+        # SHIFT-based metrics (for ca_adaptive only)
+        # ================================================
+        # We only do this if we're in ca_adaptive
+        if args.task_name == "ca_adaptive" and 'shift' in data:
+            shift_vals = data['shift'].cpu().numpy()  # shape: (batch_size,)
+            for shift_id in [1, 2, 3, 4]:
+                mask = (shift_vals == shift_id)
+                if not np.any(mask):
+                    continue  # no samples had this shift in this batch
+                y_shift = y[mask]
+                p_shift = p[mask]
+
+                metrics[f'bit_accuracy_s{shift_id}'] = np.mean(
+                    (y_shift.cpu().numpy()) == (p_shift.cpu().numpy())
+                )
+                metrics[f'exact_match_s{shift_id}'] = np.mean([
+                    np.array_equal(ps, ys)
+                    for ps, ys in zip(p_shift.cpu().numpy(), y_shift.cpu().numpy())
+                ])
+
+        # ================================================
+        # Per-state metrics (for ca_oo only)
+        # ================================================
+        if args.task_name == 'ca_oo':
+            # For each predicted state, compute separate bit_accuracy and exact_match
+            for i in range(num_predict):
+                block_start = i * (array_size + 1)
+                block_end   = block_start + (array_size + 1)  # includes [sep_token] + array_size
+
+                # predictions for state i (excluding the final sep, so -1)
+                p_slice = p[:, block_start : block_end - 1]  
+                # ground truth for state i
+                y_slice = y[:, block_start : block_end - 1]
+
+                # e.g. if we had 10 "given" states, then the predicted states might be 11..14
+                state_number = args.num_given + 1 + i
+
+                bit_acc_i = np.mean((y_slice.cpu().numpy()) == (p_slice.cpu().numpy()))
+                exact_match_i = np.mean([
+                    np.array_equal(ps, ys)
+                    for ps, ys in zip(p_slice.cpu().numpy(), y_slice.cpu().numpy())
+                ])
+                metrics[f'bit_accuracy_s{state_number}'] = bit_acc_i
+                metrics[f'exact_match_s{state_number}'] = exact_match_i
+
+        # ==============
+        # Other metrics
+        # ==============
+        if 'loss' in output:
+            metrics['loss'] = output['loss'].mean().item()
+
         if 'ce_loss' in data:
             metrics['ce_loss'] = data['ce_loss'].mean().item()
             try:
                 metrics['perplexity'] = math.exp(metrics['ce_loss'])
             except OverflowError:
                 metrics['perplexity'] = float("inf")
-        
+
         if 'dist' in data:
             metrics['dist'] = data['dist'].mean().item()
-        
+
+        # if you have multiple segments, we keep track of per-segment CE losses
         for i in range(args.max_n_segments):
             if f'ce_loss_{i}' in data:
                 metrics[f'ce_loss_{i}'] = data[f'ce_loss_{i}'].mean().item()
 
+        # ACT (Adaptive Computation Time) metrics
         if args.act_on:
             metrics['n_updates'] = data['n_updates'].mean().item()
             metrics['remainders'] = data['remainders'].mean().item()
 
         return metrics
 
-    # acceleratems-appid:undefined
-    model, optimizer, train_dataloader, valid_dataloader, test_dataloader = accelerator.prepare(
-        model, optimizer, train_dataloader, valid_dataloader, None)
 
-    fwd_kwargs = dict()
+    model, optimizer, train_dataloader, valid_dataloader, test_dataloader = accelerator.prepare(
+        model, optimizer, train_dataloader, valid_dataloader, None
+    )
+
+    fwd_kwargs = {}
     if args.output_last_segment_only:
         fwd_kwargs['output_only_last_segment'] = True
     if 'armt' in args.model_path and args.dataset_name != 'ca':
         fwd_kwargs['input_segmented'] = True
+
     trainer = Trainer(
         args, accelerator, model, optimizer, train_dataloader, valid_dataloader,
         keep_for_metrics_fn=keep_for_metrics_fn,
@@ -484,7 +548,6 @@ if __name__ == '__main__':
 
         trainer.save_metrics(save_path=args.model_path)
     else:
-
         if valid_dataloader is not None:
             logger.info('Running validation on valid data:')
             trainer.validate(valid_dataloader, write_tb=True, split='valid')

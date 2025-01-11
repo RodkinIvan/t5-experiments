@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=0,1
-NP=2 # ./test_bert_sparse_pretrain_train_valid.sh
+export CUDA_VISIBLE_DEVICES=1
+NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
 cd ../..
@@ -17,7 +17,7 @@ DATASET_NAME=ca
 TASK_NAME=$DATASET_NAME
 
 ITERS=30000
-TBS=512
+TBS=256
 
 MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
@@ -43,7 +43,7 @@ python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --num
 cd ../..
 MODEL_CFG=~/associative-recurrent-memory-transformer/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
 
-for N in 5
+for N in 30
 do
 
 

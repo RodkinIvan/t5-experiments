@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
@@ -21,7 +21,7 @@ TBS=256
 
 MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
-SHIFTS=(2)
+SHIFTS=(3)
 LRS=(3e-4)      
 BSS=(256)
 
@@ -43,7 +43,7 @@ python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --num
 cd ../..
 MODEL_CFG=~/associative-recurrent-memory-transformer/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
 
-for N in 35 36
+for N in 3 4 5
 do
 
 
