@@ -55,10 +55,19 @@ class AssociativeLayerWrapper(torch.nn.Module):
         # torch.nn.init.zeros_(self.W_mq.weight)
         self.W_mk = torch.nn.Linear(d_model, d_mem, bias=False)
         self.W_mv = torch.nn.Linear(d_model, d_model, bias=False)
+
+        
         if gating:
             self.W_mb = torch.nn.Linear(d_model, d_model)
         else:
             self.W_mb = torch.nn.Linear(d_model, n_heads)
+
+        s = 1/math.sqrt(d_model)
+        # torch.nn.init.uniform_(self.W_mq.weight, -s, s)
+        # torch.nn.init.uniform_(self.W_mk.weight, -s, s)
+        # torch.nn.init.uniform_(self.W_mb.weight, -s, s)
+
+
         torch.nn.init.zeros_(self.W_mv.weight)
 
         self.W_mem = torch.zeros(1, n_heads ,self.d_key // n_heads, d_model // n_heads)
@@ -274,12 +283,11 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
                  info=None, 
                  use_denom=True, 
                  gating=False,
-                 act_format='linear'
+                 act_format='linear',
                  
                 ) -> None:
         super().__init__(layer, d_model, num_mem_tokens, d_mem, n_heads, correction, info, use_denom, gating)
         self.act = ACT_transformer(d_model) if act_format=='transformer' else ACT_basic(d_model)
-        print(self.act)
         self.depth = max_hop
         self.max_length = 1024
 
