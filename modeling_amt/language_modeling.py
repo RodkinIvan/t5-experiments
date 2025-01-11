@@ -283,7 +283,7 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
                  info=None, 
                  use_denom=True, 
                  gating=False,
-                 act_format='linear'
+                 act_format='linear',
                  
                 ) -> None:
         super().__init__(layer, d_model, num_mem_tokens, d_mem, n_heads, correction, info, use_denom, gating)
@@ -354,7 +354,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                  act_on=False,
                  max_hop=4,
                  act_type='layer',
-                 act_format='linear'
+                 act_format='linear',
                  **rmt_config
         ):
         super().__init__()
@@ -382,7 +382,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                 info={'layer': i},
                 n_heads=n_heads,
                 use_denom=use_denom,
-                gating=gating
+                gating=gating,
                 act_format=act_format,
             )
             if act_on and (act_type != 'model'):
