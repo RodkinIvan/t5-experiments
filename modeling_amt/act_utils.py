@@ -188,6 +188,7 @@ class ACTForWholeARMT(nn.Module):
 
 class ACT_transformer(nn.Module):
     def __init__(self, hidden_size, num_heads=4, num_transformer_layers=1, dropout=0.1):
+        super(ACT_transformer, self).__init__()
         # Transformer encoder
         transformer_layer = TransformerEncoderLayer(
             d_model=hidden_size,
@@ -246,7 +247,7 @@ class ACT_transformer(nn.Module):
                 state, _ = fn((state, encoder_output))
             else:
                 state = fn(state, *args, **kwargs)
-                if isinstance(state, tuple) and len(state) > 1:
+                if isinstance(state, tuple):
                     rest = state[1:]
                     state = state[0]
 
@@ -260,4 +261,3 @@ class ACT_transformer(nn.Module):
             return previous_state, (remainders, n_updates)
         else:
             return (previous_state, *rest), (remainders, n_updates)
-

@@ -279,6 +279,7 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
                 ) -> None:
         super().__init__(layer, d_model, num_mem_tokens, d_mem, n_heads, correction, info, use_denom, gating)
         self.act = ACT_transformer(d_model) if act_format=='transformer' else ACT_basic(d_model)
+        print(self.act)
         self.depth = max_hop
         self.max_length = 1024
 
@@ -345,7 +346,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                  act_on=False,
                  max_hop=4,
                  act_type='layer',
-                 act_format='linear'
+                 act_format='linear',
                  **rmt_config
         ):
         super().__init__()
@@ -373,7 +374,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                 info={'layer': i},
                 n_heads=n_heads,
                 use_denom=use_denom,
-                gating=gating
+                gating=gating,
                 act_format=act_format,
             )
             if act_on and (act_type != 'model'):
