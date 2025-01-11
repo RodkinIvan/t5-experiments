@@ -69,6 +69,8 @@ parser.add_argument('--rewrite_setting', action='store_true', default=False,
                     help='keys can occur several times')
 parser.add_argument('--act_on', action='store_true', default=False,
                     help='use Adaptive Computation Time')
+parser.add_argument('--act_format',  type=str, default='linear', help='ACT format: linear or transformer')
+
 parser.add_argument('--max_hop', type=int, default=4, help='number of cycles in ACT')
 parser.add_argument('--time_penalty', type=float, default=0.0, help='time penalty coefficient in ACT loss')
 parser.add_argument('--act_type', type=str, default=None, help='what is in ACT (options: layer, associative)')
@@ -288,22 +290,38 @@ if __name__ == '__main__':
     per_worker_batch_size = args.batch_size * args.gradient_accumulation_steps
     kwargs = {'pin_memory': True, 'num_workers': args.data_n_workers}
 
-    train_dataloader = DataLoader(
-        train_dataset, batch_size=per_worker_batch_size, generator=train_rnd_generator,
-        collate_fn=lambda x: collate_fn(x, sample_length=args.sample_length, array_size=args.train_array_size),
-        **kwargs, drop_last=True
-    )
-    valid_dataloader = DataLoader(
-        valid_dataset, batch_size=per_worker_batch_size,
-        collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
-        **kwargs, drop_last=True
-    )
-    test_dataloader = DataLoader(
-        test_dataset, batch_size=per_worker_batch_size,
-        collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
-        **kwargs, drop_last=True
-    )
-
+    if args.dataset_name == 'ca':
+        train_dataloader = DataLoader(
+            train_dataset, batch_size=per_worker_batch_size, generator=train_rnd_generator,
+            collate_fn=lambda x: collate_fn(x),
+            **kwargs, drop_last=True
+        )
+        valid_dataloader = DataLoader(
+            valid_dataset, batch_size=per_worker_batch_size,
+            collate_fn=lambda x: collate_fn(x),
+            **kwargs, drop_last=True
+        )
+        test_dataloader = DataLoader(
+            test_dataset, batch_size=per_worker_batch_size,
+            collate_fn=lambda x: collate_fn(x),
+            **kwargs, drop_last=True
+        )
+    else:
+        train_dataloader = DataLoader(
+            train_dataset, batch_size=per_worker_batch_size, generator=train_rnd_generator,
+            collate_fn=lambda x: collate_fn(x, sample_length=args.sample_length, array_size=args.train_array_size),
+            **kwargs, drop_last=True
+        )
+        valid_dataloader = DataLoader(
+            valid_dataset, batch_size=per_worker_batch_size,
+            collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
+            **kwargs, drop_last=True
+        )
+        test_dataloader = DataLoader(
+            test_dataset, batch_size=per_worker_batch_size,
+            collate_fn=lambda x: collate_fn(x, sample_length=False, array_size=args.valid_array_size),
+            **kwargs, drop_last=True
+        )
     if args.valid_interval is None:
         args.valid_interval = args.log_interval
 
@@ -338,6 +356,7 @@ if __name__ == '__main__':
     if args.act_on:
         mem_cell_args['act_on'] = args.act_on
         mem_cell_args['max_hop'] = args.max_hop
+        mem_cell_args['act_format'] = args.act_format
         if args.act_type is not None:
             mem_cell_args['act_type'] = args.act_type
 
