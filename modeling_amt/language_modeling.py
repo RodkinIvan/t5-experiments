@@ -274,7 +274,7 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
                  info=None, 
                  use_denom=True, 
                  gating=False,
-                 act_type='transformer'
+                 act_type='linear'
                  
                 ) -> None:
         super().__init__(layer, d_model, num_mem_tokens, d_mem, n_heads, correction, info, use_denom, gating)
