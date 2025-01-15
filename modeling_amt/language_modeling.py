@@ -389,7 +389,6 @@ class AssociativeMemoryCell(torch.nn.Module):
                 use_denom=use_denom,
                 gating=gating,
                 act_format=act_format,
-                gating=gating, 
             )
             if act_on and (act_type != 'model'):
                 kw['max_hop'] = max_hop
