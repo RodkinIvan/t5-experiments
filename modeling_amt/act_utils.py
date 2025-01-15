@@ -32,10 +32,15 @@ class ACT_basic(nn.Module):
         self.p = nn.Linear(hidden_size,1)  
         self.p.bias.data.fill_(1) 
         self.threshold = 1 - 0.1
+        self.eps = 0.1
 
     def forward(self, *args, state, inputs, fn, time_enc, pos_enc, max_hop,  encoder_output=None, **kwargs):
         # init_hdd
         ## [B, S]
+        noisy_halting = False
+        if 'noisy_halting' in kwargs:
+            noisy_halting = kwargs['noisy_halting']
+            kwargs.pop('noisy_halting')
         halting_probability = torch.zeros(inputs.shape[0],inputs.shape[1]).cuda()
         ## [B, S]
         remainders = torch.zeros(inputs.shape[0],inputs.shape[1]).cuda()
@@ -46,12 +51,16 @@ class ACT_basic(nn.Module):
         step = 0
         # for l in range(self.num_layers):
         rest = None
+
+
         while( ((halting_probability<self.threshold) & (n_updates < max_hop)).byte().any()):
             # Add timing signal
             # state = state + time_enc[:, :inputs.shape[1], :].type_as(inputs.data)
             # state = state + pos_enc[:, step, :].unsqueeze(1).repeat(1,inputs.shape[1],1).type_as(inputs.data)
 
             p = self.sigma(self.p(state)).squeeze(-1)
+            if noisy_halting and self.training:
+                p = p + torch.randn_like(p) * self.eps
             # Mask for inputs which have not halted yet
             still_running = (halting_probability < 1.0).float()
 

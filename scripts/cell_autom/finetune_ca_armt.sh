@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=0,1
+export CUDA_VISIBLE_DEVICES=1
 NP=$(echo $CUDA_VISIBLE_DEVICES | awk -F',' '{print NF}')
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
@@ -20,7 +20,7 @@ TBS=256
 
 MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
-SHIFTS=(2)
+SHIFTS=(3)
 LRS=(3e-4)
 BSS=(128)
 
@@ -42,7 +42,7 @@ MODEL_CFG=~/rmt/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}
 
 
 
-for N in 8
+for N in 9
 do
 
 
@@ -81,7 +81,7 @@ MODEL_CPT=None
 
 echo RUNNING: TASK_NAME SRC_LEN MODEL_NAME MODEL_CLS N_SEG MEMORY_SIZE INPUT_SEQ_LEN LR N
 echo RUNNING: $TASK_NAME $SRC_LEN $MODEL_NAME $BACKBONE_CLS $MAX_N_SEGMENTS $MEMORY_SIZE $INPUT_SEQ_LEN $LR $N
-accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29503 run_finetuning_cell_autom.py \
+accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port $((29500+$N)) run_finetuning_cell_autom.py \
         --task_name $TASK_NAME \
         --model_path ../runs/lm_long/armt/${TASK_NAME}/$MODEL_NAME/lr${LR}_${SCHEDULER}_dmem${D_MEM}_${INPUT_SEQ_LEN}-${MAX_N_SEGMENTS}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}_act$ACT_TYPE_shift$SHIFT/run_$N \
         --model_cfg $MODEL_CFG \
@@ -115,11 +115,11 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --d_mem $D_MEM \
         --layers_attr gpt_neox.layers \
         --repeat_state \
-        # --learn_rule
-        # --act_on \
-        # --max_hop $MAX_HOP \
-        # --time_penalty 3e-4 \
-        # --act_type $ACT_TYPE
+        --act_on \
+        --max_hop $MAX_HOP \
+        --time_penalty 3e-4 \
+        --act_type $ACT_TYPE \
+        --noisy_halting
         # --freeze_mem
         # --repeat_state
 done
