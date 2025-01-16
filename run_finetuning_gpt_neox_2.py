@@ -55,7 +55,7 @@ parser.add_argument('--recurrent_wrapper_cls', type=str, default=None, help='rec
 parser.add_argument('--model_cpt', type=str, default=None, help='pretrained model checkpoint path')
 
 # Dataset args
-parser.add_argument('--num_timesteps', type=int, default=None, help='number of timesteps in train sample')
+parser.add_argument('--num_timesteps', type=int, default=10, help='number of timesteps in train sample')
 parser.add_argument('--num_test_timesteps', type=int, default=None, help='number of timesteps in test sample')
 parser.add_argument('--prediction_shift', type=int, default=1, help='num_timesteps between the last training steps and the predicted timestep')
 parser.add_argument('--repeat_state', action='store_true', default=False,
@@ -214,8 +214,12 @@ if __name__ == '__main__':
         # We'll store the shift for each item so that we can compute metrics later
         for i, b in enumerate(batch):
             input_ids_seq = []
-            for t in range(num_timesteps):
+            for t in range(num_timesteps - args.repeat_state):
                 input_ids_seq += [sep_token] + b[f'input_ids_{t}']
+                if args.repeat_state:
+                    input_ids_seq += [sep_token,] + b[f'input_ids_{t+1}']
+            if args.repeat_state:
+                input_ids_seq += [gen_token,] + b[f'input_ids_{num_timesteps - 1}']
 
             # If we're in validation, do something deterministic:
             if valid:
@@ -230,7 +234,7 @@ if __name__ == '__main__':
 
             shift_token_id = shift2token[shift]
             # (num_timesteps + shift) is presumably the next state to reveal
-            input_ids_seq += [shift_token_id, gen_token] + b[f'input_ids_{num_timesteps + shift}']
+            input_ids_seq += [shift_token_id, gen_token if not args.repeat_state else sep_token] + b[f'input_ids_{num_timesteps + shift - 1}']
 
             labels_seq = input_ids_seq.copy()
 
@@ -348,12 +352,16 @@ if __name__ == '__main__':
         time_penalty=args.time_penalty
     )
     block_size = (args.segment_size + 1) * (1 + args.repeat_state)
+    state_size = args.segment_size
     if 'armt' in args.model_path:
             assert args.num_timesteps == args.num_test_timesteps
             def spliter(x):
-                assert x.size(1) == (args.num_timesteps - args.repeat_state) * block_size + (block_size + 1) * (args.num_predict+args.repeat_state), f'{x.size(1)} != {(args.num_timesteps - args.repeat_state) * block_size + (block_size + 1) * (args.num_predict+args.repeat_state)}'
+                if args.task_name == 'ca_oo':
+                    assert x.size(1) == (args.num_timesteps - args.repeat_state) * block_size + (state_size + 1) * (args.num_predict+args.repeat_state), f'{x.size(1)} != {(args.num_timesteps - args.repeat_state) * block_size + (state_size + 1) * (args.num_predict+args.repeat_state)}'
+                elif args.task_name == 'ca_adaptive':
+                    assert x.size(1) == (args.num_timesteps - args.repeat_state) * block_size + state_size * 2 + 3, f'{x.size(1)} != {(args.num_timesteps - args.repeat_state) * block_size + state_size * 2 + 3}'
                 return [x[:, i*block_size:(i+1)*block_size] for i in range(args.num_timesteps - args.repeat_state)] + [x[:, args.num_timesteps*block_size:],]
-            if args.task_name == 'ca_oo':
+            if args.task_name in ['ca_oo', 'ca_adaptive']:
                 model.split_tensor = spliter
     # load RMT checkpoint if needed
     if args.model_cpt and args.model_cpt != 'None':
