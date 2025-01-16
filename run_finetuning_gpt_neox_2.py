@@ -103,7 +103,6 @@ parser.add_argument('--relative_step', action='store_true', default=False,
                     help='Adafactor relative_step (default: False)')
 parser.add_argument('--warmup_init', action='store_true', default=False,
                     help='Adafactor warmup_init (default: False)')
-parser.add_argument('--num_given', type=int, default=10, help='number of given states')
 parser.add_argument('--num_predict', type=int, default=4, help='number of predicted states')
 
 
@@ -157,19 +156,24 @@ if __name__ == '__main__':
     def ca_oo_collate_fn(
         batch,
         array_size,
-        num_given=args.num_given,
+        num_timesteps=args.num_timesteps,
         num_predict=args.num_predict,
         valid=False,
     ):
         for i, b in enumerate(batch):
             input_ids_seq = []
-            for t in range(num_given):
+            for t in range(num_timesteps - args.repeat_state):
                 input_ids_seq += [sep_token] + b[f'input_ids_{t}']
-
-            input_ids_seq += [gen_token]
+                if args.repeat_state:
+                    input_ids_seq += [sep_token] + b[f'input_ids_{t+1}']
+            
+                
+            if args.repeat_state:
+                input_ids_seq += [gen_token] + b[f'input_ids_{num_timesteps}']
+            input_ids_seq += [gen_token if not args.repeat_state else sep_token] 
             labels_seq = input_ids_seq.copy()
 
-            for t in range(num_given, num_given + num_predict):
+            for t in range(num_timesteps, num_timesteps + num_predict):
                 input_ids_seq += [mask_token] * array_size + [sep_token]
                 labels_seq += b[f'input_ids_{t}'] + [sep_token]
 
@@ -183,7 +187,7 @@ if __name__ == '__main__':
 
         # store a mask region for the labels
         labels_mask = torch.zeros_like(input_ids).bool()
-        labels_mask[:, -(num_predict * array_size + num_predict):] = True
+        labels_mask[:, -(num_predict * (array_size + 1)):] = True
         collated = {
             'input_ids': input_ids,
             'labels': labels, 
@@ -196,7 +200,7 @@ if __name__ == '__main__':
     def ca_adaptive_collate_fn(
         batch,
         array_size,
-        num_given=args.num_given,  # how many states are "given" at the start
+        num_timesteps=args.num_timesteps,  # how many states are "given" at the start
         valid=False,
     ):
         # mapping from shift to special token
@@ -210,7 +214,7 @@ if __name__ == '__main__':
         # We'll store the shift for each item so that we can compute metrics later
         for i, b in enumerate(batch):
             input_ids_seq = []
-            for t in range(num_given):
+            for t in range(num_timesteps):
                 input_ids_seq += [sep_token] + b[f'input_ids_{t}']
 
             # If we're in validation, do something deterministic:
@@ -225,8 +229,8 @@ if __name__ == '__main__':
             b['shift'] = shift
 
             shift_token_id = shift2token[shift]
-            # (num_given + shift) is presumably the next state to reveal
-            input_ids_seq += [shift_token_id, gen_token] + b[f'input_ids_{num_given + shift}']
+            # (num_timesteps + shift) is presumably the next state to reveal
+            input_ids_seq += [shift_token_id, gen_token] + b[f'input_ids_{num_timesteps + shift}']
 
             labels_seq = input_ids_seq.copy()
 
@@ -343,7 +347,14 @@ if __name__ == '__main__':
         act_on=args.act_on,
         time_penalty=args.time_penalty
     )
-                                
+    block_size = (args.segment_size + 1) * (1 + args.repeat_state)
+    if 'armt' in args.model_path:
+            assert args.num_timesteps == args.num_test_timesteps
+            def spliter(x):
+                assert x.size(1) == (args.num_timesteps - args.repeat_state) * block_size + (block_size + 1) * (args.num_predict+args.repeat_state), f'{x.size(1)} != {(args.num_timesteps - args.repeat_state) * block_size + (block_size + 1) * (args.num_predict+args.repeat_state)}'
+                return [x[:, i*block_size:(i+1)*block_size] for i in range(args.num_timesteps - args.repeat_state)] + [x[:, args.num_timesteps*block_size:],]
+            if args.task_name == 'ca_oo':
+                model.split_tensor = spliter
     # load RMT checkpoint if needed
     if args.model_cpt and args.model_cpt != 'None':
         model_cpt = os.path.join(args.model_cpt, "model_best/pytorch_model.bin")
@@ -477,7 +488,7 @@ if __name__ == '__main__':
                 y_slice = y[:, block_start : block_end - 1]
 
                 # e.g. if we had 10 "given" states, then the predicted states might be 11..14
-                state_number = args.num_given + 1 + i
+                state_number = args.num_timesteps + 1 + i
 
                 bit_acc_i = np.mean((y_slice.cpu().numpy()) == (p_slice.cpu().numpy()))
                 exact_match_i = np.mean([
