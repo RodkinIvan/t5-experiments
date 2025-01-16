@@ -169,7 +169,7 @@ if __name__ == '__main__':
             
                 
             if args.repeat_state:
-                input_ids_seq += [gen_token] + b[f'input_ids_{num_timesteps}']
+                input_ids_seq += [gen_token] + b[f'input_ids_{num_timesteps - 1}']
             input_ids_seq += [gen_token if not args.repeat_state else sep_token] 
             labels_seq = input_ids_seq.copy()
 
