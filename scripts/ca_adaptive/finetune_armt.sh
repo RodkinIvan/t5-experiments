@@ -14,7 +14,7 @@ RECURRENT_WRAPPER=modeling_amt.language_modeling:AssociativeRecurrentWrapper
 BACKBONE_CLS=transformers:GPTNeoXForCausalLM
 
 DATASET_NAME=ca
-TASK_NAME=ca_oo
+TASK_NAME=ca_adaptive
 
 ITERS=40000
 TBS=256

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=1
-NP=$(echo $CUDA_VISIBLE_DEVICES | awk -F',' '{print NF}') # ./test_bert_sparse_pretrain_train_valid.sh
+export CUDA_VISIBLE_DEVICES=0,1
+NP=2 # ./test_bert_sparse_pretrain_train_valid.sh
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
 cd ../..
-export WANDB_PROJECT=cellular_automata
+export WANDB_PROJECT=gpt_neox
 
 CUBLAS_WORKSPACE_CONFIG=:4096:2
 CUDA_LAUNCH_BLOCKING=1
@@ -14,7 +14,7 @@ RECURRENT_WRAPPER=modeling_amt.language_modeling:AssociativeRecurrentWrapper
 BACKBONE_CLS=transformers:GPTNeoXForCausalLM
 
 DATASET_NAME=ca
-TASK_NAME=ca_oo
+TASK_NAME=ca_adaptive
 
 ITERS=40000
 TBS=256
@@ -41,7 +41,7 @@ ACT_TYPE=layer
 cd base_models/gptconfigs
 python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --num_attention_heads $NUM_LAYERS
 cd ../..
-MODEL_CFG=~/rmt/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
+MODEL_CFG=~/associative-recurrent-memory-transformer/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
 
 for N in 5
 do
@@ -107,6 +107,9 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --d_mem $D_MEM \
         --layers_attr $LAYERS_ATTR \
         --num_mem_tokens $MEMORY_SIZE \
+        --act_on \
+        --max_hop $MAX_HOP \
+        --act_type $ACT_TYPE \
         --repeat_state
 done
 done
