@@ -57,6 +57,8 @@ parser.add_argument('--report_to', type=str, default='wandb', help='')
 parser.add_argument('--validate_only', action='store_true', default=False,
                     help='Skip training and run only validation. (default: False)')
 
+parser.add_argument('--noisy_halting', action='store_true', default=False,
+                    help='add noise to halting')
 parser.add_argument('--output_last_segment_only', action='store_true', default=False,
                     help='')
 parser.add_argument('--wrap_pos', action='store_true', default=False,
@@ -335,8 +337,11 @@ if __name__ == '__main__':
         if args.act_on:
             mem_cell_args['act_on'] = args.act_on
             mem_cell_args['max_hop'] = args.max_hop
+            
             if args.act_type is not None:
                 mem_cell_args['act_type'] = args.act_type
+            if args.noisy_halting:
+                mem_cell_args['noisy_halting'] = args.noisy_halting
 
 
         if args.num_mem_tokens is not None:

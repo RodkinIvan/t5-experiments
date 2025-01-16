@@ -284,12 +284,14 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
                  use_denom=True, 
                  gating=False,
                  act_format='linear',
-                 
+                 noisy_halting=False
                 ) -> None:
         super().__init__(layer, d_model, num_mem_tokens, d_mem, n_heads, correction, info, use_denom, gating)
         self.act = ACT_transformer(d_model) if act_format=='transformer' else ACT_basic(d_model)
         self.depth = max_hop
         self.max_length = 1024
+
+        self.noisy_halting = noisy_halting
 
         self.timing_signal = gen_timing_signal(self.max_length, d_model)
         ## for t
@@ -304,6 +306,8 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
         self.n_updates = self.n_updates.to(hidden_states.device)
         self.segments_passed = self.segments_passed.to(hidden_states.device)
 
+        if self.noisy_halting:
+            kwargs['noisy_halting'] = self.noisy_halting
         fwd = super().forward_no_update
         out, (remainders, n_updates) = self.act(
             *args,
@@ -355,6 +359,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                  max_hop=4,
                  act_type='layer',
                  act_format='linear',
+                 noisy_halting=False,
                  **rmt_config
         ):
         super().__init__()
@@ -383,10 +388,13 @@ class AssociativeMemoryCell(torch.nn.Module):
                 n_heads=n_heads,
                 use_denom=use_denom,
                 gating=gating,
-                act_format=act_format,
             )
+            if act_on:
+                kw['act_format']=act_format,
             if act_on and (act_type != 'model'):
                 kw['max_hop'] = max_hop
+            if act_on and noisy_halting:
+                kw['noisy_halting'] = noisy_halting
             if not act_on:
                 self.layers[i] = AssociativeLayerWrapper(**kw)
             elif act_type == 'associative':
