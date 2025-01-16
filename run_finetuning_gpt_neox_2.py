@@ -170,12 +170,13 @@ if __name__ == '__main__':
                 
             if args.repeat_state:
                 input_ids_seq += [gen_token] + b[f'input_ids_{num_timesteps - 1}']
-            input_ids_seq += [gen_token if not args.repeat_state else sep_token] 
+            else:
+                input_ids_seq += [gen_token] 
             labels_seq = input_ids_seq.copy()
 
             for t in range(num_timesteps, num_timesteps + num_predict):
-                input_ids_seq += [mask_token] * array_size + [sep_token]
-                labels_seq += b[f'input_ids_{t}'] + [sep_token]
+                input_ids_seq += [sep_token] + [mask_token] * array_size 
+                labels_seq += [sep_token] + b[f'input_ids_{t}'] 
 
             batch[i]['input_ids'] = input_ids_seq
             batch[i]['labels'] = labels_seq
