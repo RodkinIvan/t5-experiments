@@ -90,7 +90,7 @@ class RWKV_v6(RWKVModel):
         load = _args[0]
         args = dict(
             load_model=load,
-            grad_cp=True
+            grad_cp=kwargs.get("grad_cp", False)
         )
         model = RWKV_v6(**args)
         return model
@@ -168,6 +168,7 @@ class RecurrentWrapper(torch.nn.Module):
         super().__init__()
         self.memory_cell = memory_cell
         self.rmt_config = rmt_kwargs
+        self.last_state = None
     def forward(self, 
                 input_ids, 
                 labels=None, 
@@ -179,14 +180,19 @@ class RecurrentWrapper(torch.nn.Module):
                 input_segmented=None,
                 sliding_window=None,
                 output_only_last_segment=False,
+                use_previous_batch_state=torch.zeros(1),
                 ):
-        memory_state = None
+        if not use_previous_batch_state.all():
+            memory_state = None
+        else:
+            memory_state = self.last_state
 
         segmented = self.segment(input_ids=input_ids, inputs_embeds=inputs_embeds, attention_mask=attention_mask, labels=labels, labels_mask=labels_mask)
         cell_outputs = []
         for seg_num, segment in enumerate(segmented):
             cell_out, memory_state = self.memory_cell(**segment, memory_state=memory_state)
-            
+            if self.training:
+                self.last_state = tuple([s.detach() for s in memory_state])
             if (not output_only_last_segment) or (seg_num == len(segmented) - 1):
                 cell_outputs.append(cell_out)
             

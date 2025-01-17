@@ -5,17 +5,21 @@ from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 from munch import Munch
 
 class MemoryCell(torch.nn.Module):
+<<<<<<< HEAD
     def __init__(self, base_model,
                 act_on=False,
                 max_hop=4,
                 act_type='layer'
                  ):
+=======
+    def __init__(self, base_model, **kwargs):
+>>>>>>> upstream/ACT
         super().__init__()
         self.model = base_model
         
         
     def forward(self, input_ids, memory_state=None, **kwargs):
-        out = self.model(input_ids)
+        out = self.model(input_ids, **kwargs)
         return out, memory_state
     
     def generate(self, input_ids, memory_state, attention_mask, **generate_kwargs):
@@ -73,6 +77,7 @@ class RecurrentWrapper(torch.nn.Module):
                 attention_mask=None, 
                 output_attentions=None, 
                 output_hidden_states=None,
+                input_segmented=False,
                 ):
         memory_state = None
         segment = dict(input_ids=input_ids, inputs_embeds=inputs_embeds, attention_mask=attention_mask, labels=labels, labels_mask=labels_mask)
