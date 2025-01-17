@@ -173,22 +173,27 @@ if __name__ == '__main__':
             else:
                 input_ids_seq += [gen_token] 
             labels_seq = input_ids_seq.copy()
+            labels_mask_seq = [0] * len(input_ids_seq)
 
             for t in range(num_timesteps, num_timesteps + num_predict):
                 input_ids_seq += [sep_token] + [mask_token] * array_size 
                 labels_seq += [sep_token] + b[f'input_ids_{t}'] 
+                labels_mask_seq += [1,] * array_size + [0,] 
 
             batch[i]['input_ids'] = input_ids_seq
             batch[i]['labels'] = labels_seq
             batch[i]['attention_mask'] = [1] * len(input_ids_seq)
+            batch[i]['labels_mask'] = labels_mask_seq
             
         input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
         labels = torch.stack([torch.tensor(b['labels']) for b in batch], dim=0)
         attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
 
         # store a mask region for the labels
-        labels_mask = torch.zeros_like(input_ids).bool()
-        labels_mask[:, -(num_predict * (array_size + 1)):] = True
+
+        # labels_mask = torch.zeros_like(input_ids).bool()
+        # labels_mask[:, -(num_predict * (array_size + 1)):] = True
+        labels_mask = torch.stack([torch.tensor(b['labels_mask']) for b in batch], dim=0).bool()
         collated = {
             'input_ids': input_ids,
             'labels': labels, 
@@ -489,14 +494,19 @@ if __name__ == '__main__':
         # ================================================
         if args.task_name == 'ca_oo':
             # For each predicted state, compute separate bit_accuracy and exact_match
+            p_slices = []
+            y_slices = []
             for i in range(num_predict):
                 block_start = i * (array_size + 1)
-                block_end   = block_start + (array_size + 1)  # includes [sep_token] + array_size
+                block_end   = block_start + array_size  # includes [sep_token] + array_size
 
                 # predictions for state i (excluding the final sep, so -1)
-                p_slice = p[:, block_start : block_end - 1]  
+                p_slice = p[:, block_start : block_end]  
                 # ground truth for state i
-                y_slice = y[:, block_start : block_end - 1]
+                y_slice = y[:, block_start : block_end]
+
+                y_slices.append(y_slice)
+                p_slices.append(p_slice)
 
                 # e.g. if we had 10 "given" states, then the predicted states might be 11..14
                 state_number = args.num_timesteps + 1 + i
@@ -508,6 +518,11 @@ if __name__ == '__main__':
                 ])
                 metrics[f'bit_accuracy_s{state_number}'] = bit_acc_i
                 metrics[f'exact_match_s{state_number}'] = exact_match_i
+            y_slices = torch.stack(y_slices, dim=0)
+            p_slices = torch.stack(p_slices, dim=0)
+
+            metrics['bit_accuracy'] = np.mean((y_slices == p_slices).cpu().numpy())
+            metrics['exact_match'] = np.mean(torch.all(y_slices == p_slices, dim=(0, 2)).cpu().numpy())
 
         # ==============
         # Other metrics
