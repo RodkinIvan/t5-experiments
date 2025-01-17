@@ -350,7 +350,8 @@ if __name__ == '__main__':
                 mem_cell_args['act_type'] = args.act_type
             if args.noisy_halting:
                 mem_cell_args['noisy_halting'] = args.noisy_halting
-            mem_cell_args['constant_depth'] = args.constant_depth
+            if args.constant_depth:
+                mem_cell_args['constant_depth'] = args.constant_depth
 
 
         if args.num_mem_tokens is not None:

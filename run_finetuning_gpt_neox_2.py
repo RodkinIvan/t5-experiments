@@ -332,7 +332,8 @@ if __name__ == '__main__':
         mem_cell_args['max_hop'] = args.max_hop
         if args.act_type is not None:
             mem_cell_args['act_type'] = args.act_type
-        mem_cell_args['constant_depth'] = args.constant_depth
+        if args.constant_depth:
+            mem_cell_args['constant_depth'] = args.constant_depth
     if args.num_mem_tokens is not None:
         mem_cell_args['num_mem_tokens'] = args.num_mem_tokens
         mem_cell_args['wrap_pos'] = args.wrap_pos
