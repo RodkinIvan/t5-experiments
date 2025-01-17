@@ -8,7 +8,7 @@ import wandb
 from munch import Munch
 import os
 
-from modeling_amt.act_utils import ACT_basic, gen_timing_signal, ACTForWholeARMT, ACT_transformer
+from modeling_amt.act_utils import ACT_basic, gen_timing_signal, ACTForWholeARMT, ACT_transformer, ACT_constant_depth
 from baselines.rwkv.language_modeling import RWKVModel
 
 def dpfp(x, nu=1):
@@ -224,10 +224,11 @@ class AdaptiveAssociativeLayerWrapper(AssociativeLayerWrapper):
                  info=None, 
                  use_denom=True, 
                  gating=False,
+                 constant_depth=False,
                  
                 ) -> None:
         super().__init__(layer, d_model, num_mem_tokens, d_mem, n_heads, correction, info, use_denom, gating)
-        self.act = ACT_basic(d_model)
+        self.act = ACT_basic(d_model) if not constant_depth else ACT_constant_depth()
         self.depth = max_hop
         self.max_length = 1024
 
@@ -284,10 +285,18 @@ class AdaptiveAssociativeLayerWrapper2(AssociativeLayerWrapper):
                  use_denom=True, 
                  gating=False,
                  act_format='linear',
-                 noisy_halting=False
+                 noisy_halting=False,
+                 constant_depth=False,
                 ) -> None:
         super().__init__(layer, d_model, num_mem_tokens, d_mem, n_heads, correction, info, use_denom, gating)
-        self.act = ACT_transformer(d_model) if act_format=='transformer' else ACT_basic(d_model)
+
+        if act_format=='transformer':
+            self.act = ACT_transformer(d_model)
+        elif constant_depth:
+            self.act = ACT_constant_depth()
+        else:
+            self.act = ACT_basic(d_model)
+
         self.depth = max_hop
         self.max_length = 1024
 
@@ -360,6 +369,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                  act_type='layer',
                  act_format='linear',
                  noisy_halting=False,
+                 constant_depth=False,
                  **rmt_config
         ):
         super().__init__()
@@ -372,6 +382,8 @@ class AssociativeMemoryCell(torch.nn.Module):
         self.d_model = base_model.get_input_embeddings().embedding_dim
         self.W_mem = []
         self.layers = self.model
+
+        self.constant_depth = constant_depth
 
         self.layers_attrs = layers_attr.split('.')
         for i, attr in enumerate(self.layers_attrs):
@@ -388,6 +400,7 @@ class AssociativeMemoryCell(torch.nn.Module):
                 n_heads=n_heads,
                 use_denom=use_denom,
                 gating=gating,
+                constant_depth=self.constant_depth
             )
             if act_on:
                 kw['act_format']=act_format,

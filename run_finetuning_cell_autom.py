@@ -350,6 +350,7 @@ if __name__ == '__main__':
                 mem_cell_args['act_type'] = args.act_type
             if args.noisy_halting:
                 mem_cell_args['noisy_halting'] = args.noisy_halting
+            mem_cell_args['constant_depth'] = args.constant_depth
 
 
         if args.num_mem_tokens is not None:
@@ -524,13 +525,8 @@ if __name__ == '__main__':
                       ###booydar
                       batch_metrics_fn=batch_metrics_fn,
                       stop_metric_condition=lambda m: m >= args.desired_metric,
-<<<<<<< HEAD
-                      forward_kwargs=fwd_kwargs
-                      )
-=======
                       forward_kwargs=fwd_kwargs,
                     )
->>>>>>> upstream/ACT
 
     # try:
     if not args.validate_only:

@@ -107,6 +107,7 @@ parser.add_argument('--relative_step', action='store_true', default=False,
 parser.add_argument('--warmup_init', action='store_true', default=False,
                     help='Adafactor warmup_init (default: False)')
 
+parser.add_argument('--constant_depth', action='store_true', default=False, help='ACT depth type')
 
 if __name__ == '__main__':
     torch.autograd.set_detect_anomaly(True)
@@ -239,12 +240,8 @@ if __name__ == '__main__':
             return collated
         return addition_collate_fn
  
-<<<<<<< HEAD
-    def ca_collate_fn(batch, valid=False):
-        batch_array_size = args.valid_array_size if valid else args.train_array_size
-=======
+
     def ca_collate_fn(batch, sample_length=False, array_size=args.valid_array_size, valid=False):
->>>>>>> upstream/ACT
         for i, b in enumerate(batch):
             steps = args.num_test_timesteps if valid else args.num_timesteps
             shift = args.prediction_shift
@@ -375,6 +372,7 @@ if __name__ == '__main__':
         mem_cell_args['act_format'] = args.act_format
         if args.act_type is not None:
             mem_cell_args['act_type'] = args.act_type
+        mem_cell_args['constant_depth'] = args.constant_depth
 
     if args.num_mem_tokens is not None:
         mem_cell_args['num_mem_tokens'] = args.num_mem_tokens
