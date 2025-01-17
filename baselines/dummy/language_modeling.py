@@ -5,15 +5,7 @@ from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 from munch import Munch
 
 class MemoryCell(torch.nn.Module):
-<<<<<<< HEAD
-    def __init__(self, base_model,
-                act_on=False,
-                max_hop=4,
-                act_type='layer'
-                 ):
-=======
     def __init__(self, base_model, **kwargs):
->>>>>>> upstream/ACT
         super().__init__()
         self.model = base_model
         
