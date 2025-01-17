@@ -436,7 +436,7 @@ if __name__ == '__main__':
         elif args.task_name == "ca_oo":
             # for ca_oo, we have multiple predicted states
             num_predict = args.num_predict
-            total_pred_size = num_predict * (array_size + 1)
+            total_pred_size = num_predict * (array_size + 1) - 1
         else:
             raise ValueError(f'Unknown task_name: {args.task_name}')
 
