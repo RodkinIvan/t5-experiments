@@ -33,7 +33,8 @@ default_config = {
   "act_on": False,
   "act_type": "layer",
   "max_hop": 4,
-  "time_penalty": 3e-4
+  "time_penalty": 3e-4,
+  "constant_depth": False
 }
 
 parser = argparse.ArgumentParser()

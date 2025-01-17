@@ -157,7 +157,7 @@ parser.add_argument('--relative_step', action='store_true', default=False,
 parser.add_argument('--warmup_init', action='store_true', default=False,
                     help='Adafactor warmup_init (default: False)')
 
-parser.add_argument('--constant_depth', type=bool, default=False, help='ACT depth type')
+parser.add_argument('--constant_depth', action='store_true', default=False, help='ACT depth type')
 
 from tqdm.auto import tqdm
 

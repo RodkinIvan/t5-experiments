@@ -23,16 +23,15 @@ TASK_NAME=$DATASET_NAME
 ITERS=30000
 TBS=256
 
-MAX_HOP=3
+MAX_HOP=1
 ACT_TYPE=layer
 TIME_PENALTY=3e-4
 
 MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
-SHIFTS=(3)
+SHIFTS=(1)
 LRS=(1e-3)
 BSS=(16)
-CONSTANT_DEPTH=True
 
 INPUT_TOKENS=20
 
@@ -119,8 +118,7 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --act_type $ACT_TYPE \
         --max_hop $MAX_HOP  \
         --time_penalty $TIME_PENALTY \
-        --constant_depth $CONSTANT_DEPTH
-
+        --constant_depth
 done
 done
 done

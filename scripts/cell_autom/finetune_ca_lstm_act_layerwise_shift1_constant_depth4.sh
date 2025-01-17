@@ -23,16 +23,15 @@ TASK_NAME=$DATASET_NAME
 ITERS=30000
 TBS=256
 
-MAX_HOP=3
+MAX_HOP=4
 ACT_TYPE=layer
 TIME_PENALTY=3e-4
 
 MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
-SHIFTS=(3)
+SHIFTS=(1)
 LRS=(1e-3)
 BSS=(16)
-CONSTANT_DEPTH=True
 
 INPUT_TOKENS=20
 
@@ -88,7 +87,7 @@ MODEL_CPT=None
 
 echo RUNNING: TASK_NAME SRC_LEN MODEL_NAME MODEL_CLS N_SEG MEMORY_SIZE INPUT_SEQ_LEN LR N
 echo RUNNING: $TASK_NAME $SRC_LEN $MODEL_NAME $BACKBONE_CLS $MAX_N_SEGMENTS $MEMORY_SIZE $INPUT_SEQ_LEN $LR $N
-accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29504 run_finetuning_cell_autom.py \
+accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29506 run_finetuning_cell_autom.py \
         --task_name $TASK_NAME \
         --model_path ../runs/lm_long/lstm/${TASK_NAME}/$MODEL_NAME/lr${LR}_${SCHEDULER}_dmem${D_MEM}_${INPUT_SEQ_LEN}-${MAX_N_SEGMENTS}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N \
         --model_cfg $MODEL_CFG \
@@ -119,8 +118,7 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --act_type $ACT_TYPE \
         --max_hop $MAX_HOP  \
         --time_penalty $TIME_PENALTY \
-        --constant_depth $CONSTANT_DEPTH
-
+        --constant_depth
 done
 done
 done

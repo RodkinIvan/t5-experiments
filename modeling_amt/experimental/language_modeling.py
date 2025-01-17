@@ -120,8 +120,8 @@ class AssociativeLayerWrapper(torch.nn.Module):
         out = self.layer(hidden_states, *args, **kwargs)
         if not self.generate_mode:
             # reminder
-            mem_tokens = out[0][:, :-self.num_mem_tokens]
-            # mem_tokens = out[0][:, -self.num_mem_tokens:]
+            # mem_tokens = out[0][:, :-self.num_mem_tokens]
+            mem_tokens = out[0][:, -self.num_mem_tokens:]
             # mem_tokens = out[0]
             self.update_mem(mem_tokens)
             self.first_seg = False
@@ -258,30 +258,30 @@ class AssociativeMemoryCell(torch.nn.Module):
         for i, attr in enumerate(self.layers_attrs):
             self.layers = getattr(self.layers, attr)
         
-        for i in range(len(self.layers)):
-            kw = dict(
-                layer=self.layers[i], 
-                d_model=self.d_model, 
-                num_mem_tokens=self.num_mem_tokens, 
-                d_mem=self.d_mem,
-                correction=correction,
-                info={'layer': i},
-                n_heads=n_heads,
-                use_denom=use_denom,
-                gating=gating
-            )
-            self.layers[i] = AssociativeLayerWrapper(**kw) if not act_on else AdaptiveAssociativeLayerWrapper(**kw)
-        # kw = dict(
-        #     layer=self.model, 
-        #     d_model=self.d_model, 
-        #     num_mem_tokens=self.num_mem_tokens, 
-        #     d_mem=self.d_mem,
-        #     correction=correction,
-        #     n_heads=n_heads,
-        #     use_denom=use_denom,
-        #     gating=gating
-        # )
-        # self.model = AssociativeLayerWrapper(**kw)
+        # for i in range(len(self.layers)):
+        #     kw = dict(
+        #         layer=self.layers[i], 
+        #         d_model=self.d_model, 
+        #         num_mem_tokens=self.num_mem_tokens, 
+        #         d_mem=self.d_mem,
+        #         correction=correction,
+        #         info={'layer': i},
+        #         n_heads=n_heads,
+        #         use_denom=use_denom,
+        #         gating=gating
+        #     )
+        #     self.layers[i] = AssociativeLayerWrapper(**kw) if not act_on else AdaptiveAssociativeLayerWrapper(**kw)
+        kw = dict(
+            layer=self.model, 
+            d_model=self.d_model, 
+            num_mem_tokens=self.num_mem_tokens, 
+            d_mem=self.d_mem,
+            correction=correction,
+            n_heads=n_heads,
+            use_denom=use_denom,
+            gating=gating
+        )
+        self.model = AssociativeLayerWrapper(**kw)
         self.create_memory(num_mem_tokens)
         self.wrap_pos = wrap_pos
         self.act_on = act_on
