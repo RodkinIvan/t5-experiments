@@ -361,7 +361,9 @@ if __name__ == '__main__':
                     assert x.size(1) == (args.num_timesteps - args.repeat_state) * block_size + (state_size + 1) * (args.num_predict+args.repeat_state), f'{x.size(1)} != {(args.num_timesteps - args.repeat_state) * block_size + (state_size + 1) * (args.num_predict+args.repeat_state)}'
                 elif args.task_name == 'ca_adaptive':
                     assert x.size(1) == (args.num_timesteps - args.repeat_state) * block_size + state_size * 2 + 3, f'{x.size(1)} != {(args.num_timesteps - args.repeat_state) * block_size + state_size * 2 + 3}'
-                return [x[:, i*block_size:(i+1)*block_size] for i in range(args.num_timesteps - args.repeat_state)] + [x[:, (args.num_timesteps-args.repeat_state)*block_size:],]
+                segmented = [x[:, i*block_size:(i+1)*block_size] for i in range(args.num_timesteps - args.repeat_state)] + [x[:, (args.num_timesteps-args.repeat_state)*block_size:],]
+                assert sum([s.size(1) for s in segmented]) == x.size(1)
+                return segmented
             if args.task_name in ['ca_oo', 'ca_adaptive']:
                 model.split_tensor = spliter
     # load RMT checkpoint if needed
