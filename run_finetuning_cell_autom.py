@@ -164,6 +164,7 @@ parser.add_argument('--relative_step', action='store_true', default=False,
 parser.add_argument('--warmup_init', action='store_true', default=False,
                     help='Adafactor warmup_init (default: False)')
 
+parser.add_argument('--constant_depth', action='store_true', default=False, help='ACT depth type')
 
 from tqdm.auto import tqdm
 
@@ -305,6 +306,13 @@ if __name__ == '__main__':
     logger.info(f'Using model class: {model_cls}')
     if not args.from_pretrained:
         model_cfg = AutoConfig.from_pretrained(args.model_cfg)
+        if 'lstm' in args.model_path:
+            model_cfg = model_cfg.to_dict()
+            model_cfg['act_on'] = args.act_on
+            model_cfg['max_hop'] = args.max_hop
+            model_cfg['act_type'] = args.act_type
+            model_cfg['time_penalty'] = args.time_penalty
+            model_cfg['constant_depth'] = args.constant_depth
         model = model_cls(config=model_cfg)
     else:
         logger.info(f'Loading pretrained model: {args.from_pretrained}')
@@ -342,6 +350,8 @@ if __name__ == '__main__':
                 mem_cell_args['act_type'] = args.act_type
             if args.noisy_halting:
                 mem_cell_args['noisy_halting'] = args.noisy_halting
+            if args.constant_depth:
+                mem_cell_args['constant_depth'] = args.constant_depth
 
 
         if args.num_mem_tokens is not None:
@@ -351,7 +361,7 @@ if __name__ == '__main__':
             mem_cell_args['layers_attr'] = args.layers_attr
         if args.no_denom:
             mem_cell_args['use_denom'] = not args.no_denom
-        if args.freeze_mem is not None:
+        if args.freeze_mem:
             mem_cell_args['freeze_mem'] = args.freeze_mem
 
         if args.no_correction:
@@ -507,6 +517,10 @@ if __name__ == '__main__':
         fwd_kwargs['output_only_last_segment'] = True
     
     batch_metrics_fn = lambda _, y: {key: y[key] for key in y.keys() if (('loss' in key) or ('!log' in key))}
+
+    fwd_kwargs = dict()
+    if 'armt' in args.model_path:
+        fwd_kwargs['output_only_last_segment'] = True
     trainer = Trainer(args, accelerator, model, optimizer, train_dataloader, valid_dataloader,
                       keep_for_metrics_fn=keep_for_metrics_fn, metrics_fn=metrics_fn,
                       ###booydar

@@ -106,6 +106,8 @@ parser.add_argument('--warmup_init', action='store_true', default=False,
 parser.add_argument('--num_predict', type=int, default=4, help='number of predicted states')
 parser.add_argument('--cot_setting', action='store_true', default=False, help='use CoT')
 
+parser.add_argument('--constant_depth', action='store_true', default=False, help='ACT depth type')
+
 
 if __name__ == '__main__':
     torch.autograd.set_detect_anomaly(True)
@@ -346,6 +348,8 @@ if __name__ == '__main__':
         mem_cell_args['max_hop'] = args.max_hop
         if args.act_type is not None:
             mem_cell_args['act_type'] = args.act_type
+        if args.constant_depth:
+            mem_cell_args['constant_depth'] = args.constant_depth
     if args.num_mem_tokens is not None:
         mem_cell_args['num_mem_tokens'] = args.num_mem_tokens
         mem_cell_args['wrap_pos'] = args.wrap_pos

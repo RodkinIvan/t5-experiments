@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export CUDA_VISIBLE_DEVICES=1,2,3,4
-NP=4 # ./test_bert_sparse_pretrain_train_valid.sh
+export CUDA_VISIBLE_DEVICES=0
+NP=1 # ./test_bert_sparse_pretrain_train_valid.sh
 set -e
 cd ../..
 
@@ -8,10 +8,10 @@ CUBLAS_WORKSPACE_CONFIG=:4096:2
 CUDA_LAUNCH_BLOCKING=1
 
 MODEL_TYPE=decoder
-MEMORY_CELL=modeling_amt.language_modeling:AssociativeMemoryCell
-RECURRENT_WRAPPER=modeling_amt.language_modeling:AssociativeRecurrentWrapper
+MEMORY_CELL=modeling_amt.experimental.language_modeling:AssociativeMemoryCell
+RECURRENT_WRAPPER=modeling_amt.experimental.language_modeling:AssociativeRecurrentWrapper
 BACKBONE_CLS=transformers:AutoModelForCausalLM
-TEACHER_CLS=transformers:AutoModelForCausalLM
+# TEACHER_CLS=transformers:AutoModelForCausalLM
 TASK_NAME=wikitext-103-v1
 
 ITERS=36000
@@ -25,8 +25,8 @@ LRS=(1e-4)
 MODEL=irodkin/gpt2-wiki103
 BSS=(1)
 
-TEACHER=irodkin/gpt2-wiki103
-D_MEM=96
+# TEACHER=irodkin/gpt2-wiki103  
+D_MEM=64
 N_HEADS=1
 
 
@@ -43,11 +43,11 @@ MEMORY_SIZE=${MEMORY_SIZES[j]}
 MAX_N_SEGMENTS=${MAX_N_SEGMENTSS[j]}
 MAX_VAL_SEGMENTS=${MAX_VAL_SEGMENTSS[j]}
 
-INPUT_SIZE=$(($INPUT_TOKENS+2*$MEMORY_SIZE))
-INPUT_SEQ_LEN=$(((INPUT_SIZE-2*MEMORY_SIZE)*MAX_N_SEGMENTS))
+INPUT_SIZE=$(($INPUT_TOKENS+$MEMORY_SIZE))
+INPUT_SEQ_LEN=$(((INPUT_SIZE-MEMORY_SIZE)*MAX_N_SEGMENTS))
 TGT_LEN=$INPUT_SEQ_LEN
 LR_=${LRS[j]}
-VAL_SEQ_LEN=$(((INPUT_SIZE-2*MEMORY_SIZE)*MAX_VAL_SEGMENTS))
+VAL_SEQ_LEN=$(((INPUT_SIZE-MEMORY_SIZE)*MAX_VAL_SEGMENTS))
 ALPHA=${ALPHAS[j]}
 
 BS=${BSS[j]}
