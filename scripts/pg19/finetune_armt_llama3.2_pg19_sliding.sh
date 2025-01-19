@@ -25,8 +25,8 @@ TBS=256
 BS=2
 
 LR=1e-05
-SEGMENT_SIZE=1024
-MAX_N_SEGMENTS=2
+SEGMENT_SIZE=512
+MAX_N_SEGMENTS=4
 MEMORY_SIZE=32
 D_MEM=64
 LAYERS_ATTR=model.layers
@@ -40,7 +40,7 @@ do
 
 K2=-1   # BPTT unroll length
 
-MODEL_CPT=<CPT_PATH>
+MODEL_CPT=../runs/pg19/meta-llama/Llama-3.2-1B/linear_adamw_wd1e-03_4x512_mem32_bs256_bptt--1_nfs_dmem64/run_1/checkpoint-7000/pytorch_model.bin
 
 # cd accel_configs/
 # python create_config.py \
@@ -93,6 +93,8 @@ accelerate launch --config_file $ACCEL_CONFIG --main_process_port 29002 --num_pr
         --no_loss_from_first_segment \
         --valid_tokens tokens \
         --train_tokens tokens \
+        --attend_to_previous_input \
         --model_cpt $MODEL_CPT
+        
 done
 echo "done"
