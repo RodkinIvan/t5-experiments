@@ -354,7 +354,8 @@ if __name__ == '__main__':
     if args.act_on:
         mem_cell_args['act_on'] = args.act_on
         mem_cell_args['max_hop'] = args.max_hop
-        mem_cell_args['act_format'] = args.act_format
+        if args.act_format is not None:
+            mem_cell_args['act_format'] = args.act_format
         if args.act_type is not None:
             mem_cell_args['act_type'] = args.act_type
 
