@@ -105,6 +105,7 @@ parser.add_argument('--relative_step', action='store_true', default=False,
 parser.add_argument('--warmup_init', action='store_true', default=False,
                     help='Adafactor warmup_init (default: False)')
 parser.add_argument('--num_predict', type=int, default=4, help='number of predicted states')
+parser.add_argument('--cot_setting', action='store_true', default=False, help='use CoT')
 
 
 if __name__ == '__main__':
@@ -175,13 +176,20 @@ if __name__ == '__main__':
                 input_ids_seq += [gen_token] 
             labels_seq = input_ids_seq.copy()
             labels_mask_seq = [0] * len(input_ids_seq)
+            if args.cot_setting:
+                input_ids_generate_seq = input_ids_seq.copy() + [sep_token,]
 
             for t in range(num_timesteps, num_timesteps + num_predict):
-                input_ids_seq += [sep_token] + [mask_token] * array_size 
+                if not args.cot_setting:
+                    input_ids_seq += [sep_token] + [mask_token] * array_size 
+                    labels_mask_seq += [1,] * array_size + [0,] 
+                else:
+                    input_ids_seq += [sep_token] + b[f'input_ids_{t}']
+                    labels_mask_seq += [1,] * array_size + [1,] 
                 labels_seq += [sep_token] + b[f'input_ids_{t}'] 
-                labels_mask_seq += [1,] * array_size + [0,] 
 
             batch[i]['input_ids'] = input_ids_seq
+            batch[i]['input_ids_generate'] = input_ids_generate_seq
             batch[i]['labels'] = labels_seq
             batch[i]['attention_mask'] = [1] * len(input_ids_seq)
             batch[i]['labels_mask'] = labels_mask_seq
@@ -189,6 +197,7 @@ if __name__ == '__main__':
         input_ids = torch.stack([torch.tensor(b['input_ids']) for b in batch], dim=0)
         labels = torch.stack([torch.tensor(b['labels']) for b in batch], dim=0)
         attention_mask = torch.stack([torch.tensor(b['attention_mask']) for b in batch], dim=0)
+        input_ids_generate = torch.stack([torch.tensor(b['input_ids_generate']) for b in batch], dim=0)
 
         # store a mask region for the labels
 
@@ -200,6 +209,8 @@ if __name__ == '__main__':
             'labels': labels, 
             'attention_mask': attention_mask,
             'labels_mask': labels_mask,
+            'input_ids_generate': input_ids_generate,
+            'attention_mask_generate': torch.ones_like(input_ids_generate)
         }
         return collated
 
@@ -410,7 +421,8 @@ if __name__ == '__main__':
         data = {}
         data['labels'] = batch['labels']
         data['labels_mask'] = batch['labels_mask']
-
+        if 'generation_outputs' in output:
+            data['generation_outputs'] = output['generation_outputs']
         # Shift is stored ONLY for ca_adaptive in our code, but won't break for other tasks
         # so we can just keep it if it exists:
         if 'shift' in batch:
@@ -418,7 +430,8 @@ if __name__ == '__main__':
 
         if 'generation_outputs' in output:
             data['generation_outputs'] = output['generation_outputs']
-        data['predictions'] = torch.argmax(output['logits'].detach(), dim=-1)
+        if 'logits' in output:
+            data['predictions'] = torch.argmax(output['logits'].detach(), dim=-1)
         for key in batch.keys():
             if 'loss' in key: 
                 data[key] = batch[key]
@@ -459,7 +472,10 @@ if __name__ == '__main__':
         
         # region of predictions
         # shift by -1 because we typically ignore the last token for next-token prediction
-        p = data['predictions'][:, -total_pred_size - 1 : -1]
+        if 'generation_outputs' not in output:
+            p = data['predictions'][:, -total_pred_size - 1 : -1]
+        else:
+            p = output['generation_outputs'][:, :total_pred_size]
 
         # ==============
         # Overall metrics
@@ -572,6 +588,7 @@ if __name__ == '__main__':
         batch_metrics_fn=batch_metrics_fn,
         stop_metric_condition=lambda m: m >= args.desired_metric,
         forward_kwargs=fwd_kwargs,
+        generate_kwargs={'max_new_tokens': args.num_predict * (args.valid_array_size + 1) + 1}
     )
 
     if not args.validate_only:
