@@ -110,6 +110,7 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --act_on \
         --max_hop $MAX_HOP \
         --act_type $ACT_TYPE \
+        --act_format transformer \
         --repeat_state
 done
 done

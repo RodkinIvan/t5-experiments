@@ -14,7 +14,7 @@ RECURRENT_WRAPPER=modeling_amt.language_modeling:AssociativeRecurrentWrapper
 BACKBONE_CLS=transformers:GPTNeoXForCausalLM
 
 DATASET_NAME=ca
-TASK_NAME=ca_adaptive
+TASK_NAME=ca_oo
 
 ITERS=40000
 TBS=256
@@ -23,16 +23,16 @@ MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
 SHIFTS=(1)
 LRS=(3e-4)      
-BSS=(256S)
+BSS=(256)
 
-INPUT_TOKENS=20
+INPUT_TOKENS=1000
 N_HEADS=1
 
 DIM=128
 NUM_LAYERS=4
 
-MEMORY_SIZE=16
-D_MEM=32
+MEMORY_SIZE=1
+D_MEM=1
 LAYERS_ATTR=gpt_neox.layers
 
 MAX_HOP=4
@@ -43,7 +43,7 @@ python create_config.py --hidden_size $DIM --num_hidden_layers $NUM_LAYERS --num
 cd ../..
 MODEL_CFG=~/associative-recurrent-memory-transformer/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
 
-for N in 24
+for N in 29 39 49
 do
 
 
@@ -75,9 +75,9 @@ MODEL_CPT=None
 
 echo RUNNING: TASK_NAME SRC_LEN MODEL_NAME MODEL_CLS N_SEG MEMORY_SIZE INPUT_SEQ_LEN LR N
 echo RUNNING: $TASK_NAME $SRC_LEN $MODEL_NAME $BACKBONE_CLS $MAX_N_SEGMENTS $MEMORY_SIZE $INPUT_SEQ_LEN $LR $N
-accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29504 run_finetuning_gpt_neox_2.py \
+accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29506 run_finetuning_gpt_neox_2.py \
         --task_name $TASK_NAME \
-        --model_path ../runs/lm_long/armt/${TASK_NAME}/$MODEL_NAME/lr${LR}_${SCHEDULER}_dmem${D_MEM}_${INPUT_SEQ_LEN}-${MAX_N_SEGMENTS}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N \
+        --model_path ../runs/lm_long/amt/${TASK_NAME}/$MODEL_NAME/lr${LR}_${SCHEDULER}_dmem${D_MEM}_${INPUT_SEQ_LEN}-${MAX_N_SEGMENTS}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N \
         --model_cfg $MODEL_CFG \
         --dataset_name $DATASET_NAME \
         --memory_cell_cls $MEMORY_CELL \
@@ -110,7 +110,8 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --act_on \
         --max_hop $MAX_HOP \
         --act_type $ACT_TYPE \
-        --repeat_state
+        --act_format transformer \
+        --freeze_mem
 done
 done
 done
