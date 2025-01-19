@@ -114,7 +114,9 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --d_mem $D_MEM \
         --layers_attr $LAYERS_ATTR \
         --num_mem_tokens $MEMORY_SIZE \
+        --act_on \
         --max_hop $MAX_HOP \
+        --act_type $ACT_TYPE \
         --freeze_mem
 done
 done
