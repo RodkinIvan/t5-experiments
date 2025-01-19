@@ -389,8 +389,10 @@ class AssociativeMemoryCell(torch.nn.Module):
                 use_denom=use_denom,
                 gating=gating,
             )
-            if act_on:
+            if act_on and act_type != 'model':
                 kw['act_format']=act_format,
+            if act_on and act_type == 'model' and act_format != 'linear':
+                raise NotImplementedError
             if act_on and (act_type != 'model'):
                 kw['max_hop'] = max_hop
             if act_on and noisy_halting:
