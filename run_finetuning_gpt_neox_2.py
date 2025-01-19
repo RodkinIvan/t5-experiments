@@ -175,8 +175,7 @@ if __name__ == '__main__':
                 input_ids_seq += [gen_token] 
             labels_seq = input_ids_seq.copy()
             labels_mask_seq = [0] * len(input_ids_seq)
-            if args.cot_setting:
-                input_ids_generate_seq = input_ids_seq.copy() + [sep_token,]
+            input_ids_generate_seq = input_ids_seq.copy() + [sep_token,]
 
             for t in range(num_timesteps, num_timesteps + num_predict):
                 if not args.cot_setting:
@@ -374,7 +373,7 @@ if __name__ == '__main__':
             assert args.num_timesteps == args.num_test_timesteps
             def spliter(x):
                 if args.task_name == 'ca_oo':
-                    assert x.size(1) == (args.num_timesteps - args.repeat_state) * block_size + (state_size + 1) * (args.num_predict+args.repeat_state), f'{x.size(1)} != {(args.num_timesteps - args.repeat_state) * block_size + (state_size + 1) * (args.num_predict+args.repeat_state)}'
+                    assert (x.size(1) == (args.num_timesteps - args.repeat_state) * block_size + (state_size + 1) * (args.num_predict+args.repeat_state)) or x.size(1) == (args.num_timesteps - args.repeat_state) * block_size + (state_size + 1) * (args.repeat_state) + 1, f'{x.size(1)} != {(args.num_timesteps - args.repeat_state) * block_size + (state_size + 1) * (args.num_predict+args.repeat_state)} and {x.size(1)} != {(args.num_timesteps - args.repeat_state) * block_size + (state_size + 1) * (args.repeat_state) + 1}'
                 elif args.task_name == 'ca_adaptive':
                     assert x.size(1) == (args.num_timesteps - args.repeat_state) * block_size + state_size * 2 + 3, f'{x.size(1)} != {(args.num_timesteps - args.repeat_state) * block_size + state_size * 2 + 3}'
                 segmented = [x[:, i*block_size:(i+1)*block_size] for i in range(args.num_timesteps - args.repeat_state)] + [x[:, (args.num_timesteps-args.repeat_state)*block_size:],]
