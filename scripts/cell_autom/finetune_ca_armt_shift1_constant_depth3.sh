@@ -1,37 +1,35 @@
 #!/usr/bin/env bash
 export CUDA_VISIBLE_DEVICES=0,1
-NP=2 # ./test_bert_sparse_pretrain_train_valid.sh
+NP=$(echo $CUDA_VISIBLE_DEVICES | awk -F',' '{print NF}')
 export NCCL_ASYNC_ERROR_HANDLING=0
 set -e
 cd ../..
-export WANDB_PROJECT=gpt_neox
-
+export WANDB_PROJECT=cellular_automata
 CUBLAS_WORKSPACE_CONFIG=:4096:2
 CUDA_LAUNCH_BLOCKING=1
+TASK_NAME=CA
 MODEL_TYPE=decoder
 MEMORY_CELL=modeling_amt.language_modeling:AssociativeMemoryCell
 RECURRENT_WRAPPER=modeling_amt.language_modeling:AssociativeRecurrentWrapper
 BACKBONE_CLS=transformers:GPTNeoXForCausalLM
 
-DATASET_NAME=ca
-TASK_NAME=$DATASET_NAME
+DATASET_PATH=irodkin/1dCA_r2s20T20
 
-ITERS=30000
+ITERS=40000
 TBS=256
 
 MAX_N_SEGMENTSS=(10)
 MAX_VAL_SEGMENTSS=(10)
-SHIFTS=(4)
+SHIFTS=(1)
 LRS=(3e-4)
 BSS=(128)
 
-MEMORY_SIZE=1
-INPUT_TOKENS=231
-D_MEM=1
-LAYERS_ATTR=gpt_neox.layers
+MEMORY_SIZE=16
+INPUT_TOKENS=20
+D_MEM=32
 N_HEADS=1
 
-ACT_TYPE=model
+ACT_TYPE=layer
 MAX_HOP=3
 
 DIM=128
@@ -43,7 +41,8 @@ cd ../..
 MODEL_CFG=~/rmt/wip/base_models/gptconfigs/neox_tiny_${NUM_LAYERS}l${NUM_LAYERS}hd${DIM}.json
 
 
-for N in 10 11
+
+for N in 8
 do
 
 
@@ -82,11 +81,12 @@ MODEL_CPT=None
 
 echo RUNNING: TASK_NAME SRC_LEN MODEL_NAME MODEL_CLS N_SEG MEMORY_SIZE INPUT_SEQ_LEN LR N
 echo RUNNING: $TASK_NAME $SRC_LEN $MODEL_NAME $BACKBONE_CLS $MAX_N_SEGMENTS $MEMORY_SIZE $INPUT_SEQ_LEN $LR $N
-accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29502 run_finetuning_gpt_neox.py \
+accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_process_port 29509 run_finetuning_cell_autom.py \
         --task_name $TASK_NAME \
-        --model_path ../runs/lm_long/amt/${TASK_NAME}/$MODEL_NAME/lr${LR}_${SCHEDULER}_dmem${D_MEM}_${INPUT_SEQ_LEN}-${MAX_N_SEGMENTS}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}/run_$N \
+        --model_path ../runs/lm_long/armt/${TASK_NAME}/$MODEL_NAME/lr${LR}_${SCHEDULER}_dmem${D_MEM}_${INPUT_SEQ_LEN}-${MAX_N_SEGMENTS}x${INPUT_SIZE}_mem${MEMORY_SIZE}_bs${TBS}_iters${ITERS}_${SEGMENT_ORDERING}_bptt-${K2}_act$ACT_TYPE_shift$SHIFT/run_$N \
         --model_cfg $MODEL_CFG \
-        --dataset_name $DATASET_NAME \
+        --dataset_path $DATASET_PATH \
+        --model_type $MODEL_TYPE \
         --memory_cell_cls $MEMORY_CELL \
         --recurrent_wrapper_cls $RECURRENT_WRAPPER \
         --model_cls $BACKBONE_CLS \
@@ -94,6 +94,7 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --segment_size $INPUT_TOKENS \
         --input_size $INPUT_SIZE \
         --max_n_segments $MAX_N_SEGMENTS \
+        --num_mem_tokens $MEMORY_SIZE \
         --num_timesteps $MAX_N_SEGMENTS \
         --num_test_timesteps $MAX_VAL_SEGMENTS \
         --prediction_shift $SHIFT \
@@ -107,21 +108,23 @@ accelerate launch --num_processes $NP --config_file  ./accelerate.yaml --main_pr
         --data_n_workers 2 \
         --log_interval 50 --valid_interval 250 \
         --show_valid_examples 5 \
-        --early_stopping_patience 10000 \
+        --early_stopping_patience 30 \
         --seed $(($N+42*$j)) \
-        --clip_grad_value 1.0 \
+        --clip_grad_value 0.1 \
         --save_best \
         --d_mem $D_MEM \
-        --layers_attr $LAYERS_ATTR \
-        --num_mem_tokens $MEMORY_SIZE \
+        --layers_attr gpt_neox.layers \
+        --repeat_state \
         --act_on \
         --max_hop $MAX_HOP \
+        --time_penalty 3e-4 \
         --act_type $ACT_TYPE \
-        --freeze_mem \
         --constant_depth
+
 done
 done
 done
 done
 done
 echo "done"
+
