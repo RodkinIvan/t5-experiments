@@ -8,7 +8,7 @@ import wandb
 from munch import Munch
 import os
 
-from modeling_amt.act_utils import ACT_basic, gen_timing_signal, ACTForWholeARMT, ACT_transformer, ACT_constant_depth
+from modeling_amt.act_utils import ACT_basic, gen_timing_signal, ACTForWholeARMT, ACT_transformer, ACT_constant_depth, ACTForWholeARMT_constant_depth
 from baselines.rwkv.language_modeling import RWKVModel
 
 def dpfp(x, nu=1):
@@ -400,12 +400,14 @@ class AssociativeMemoryCell(torch.nn.Module):
                 n_heads=n_heads,
                 use_denom=use_denom,
                 gating=gating,
-                constant_depth=self.constant_depth
             )
-            if act_on:
-                kw['act_format']=act_format,
+            
+            print("\n\n\n\n\n\n\n\n\n\nCD", self.constant_depth)
+
             if act_on and (act_type != 'model'):
                 kw['max_hop'] = max_hop
+                kw['constant_depth'] = self.constant_depth
+                kw['act_format'] = act_format
             if act_on and noisy_halting:
                 kw['noisy_halting'] = noisy_halting
             if not act_on:
@@ -419,8 +421,26 @@ class AssociativeMemoryCell(torch.nn.Module):
             else:
                 raise f'Unknown ACT type: {act_type}'
 
+            # if act_on:
+            #     kw['act_format']=act_format
+            #     kw['constant_depth'] = self.constant_depth
+            # if act_on and (act_type != 'model'):
+            #     kw['max_hop'] = max_hop
+            # if act_on and noisy_halting:
+            #     kw['noisy_halting'] = noisy_halting
+            # if not act_on:
+            #     self.layers[i] = AssociativeLayerWrapper(**kw)
+            # elif act_type == 'associative':
+            #     self.layers[i] = AdaptiveAssociativeLayerWrapper(**kw)
+            # elif act_type == 'layer':
+            #     self.layers[i] = AdaptiveAssociativeLayerWrapper2(**kw)
+            # elif act_type == 'model':
+            #     self.layers[i] = AssociativeLayerWrapper(**kw)
+            # else:
+            #     raise f'Unknown ACT type: {act_type}'
+
         if act_type == 'model':
-            self.act = ACTForWholeARMT(self.d_model)
+            self.act = ACTForWholeARMT(self.d_model) if not self.constant_depth else ACTForWholeARMT_constant_depth()
             self.depth = max_hop
             self.max_length = 1024
             self.timing_signal = gen_timing_signal(self.max_length, self.d_model)
@@ -630,7 +650,7 @@ class AssociativeMemoryCell(torch.nn.Module):
         
     
     def gptneox_forward_act(self, inputs_embeds, labels=None, labels_mask=None, zero_mem=False, attention_mask=None, **kwargs):
-            
+            print("\n\n\n\n\n\n\n\n\n\ngptneox_forward_act")
             drop = self.model.gpt_neox.emb_dropout
             hidden_states = drop(inputs_embeds)
             seq_length = hidden_states.shape[1]
