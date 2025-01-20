@@ -386,7 +386,7 @@ if __name__ == '__main__':
             assert args.num_timesteps == args.num_test_timesteps
             def spliter(x):
                 assert x.size(1) == (args.num_timesteps + 1 - args.repeat_state) * block_size + args.rule_len + 1, f'{x.size(1)} != {(args.num_timesteps + 1 - args.repeat_state) * block_size + args.rule_len + 1}'
-                return [x[:, i*block_size:(i+1)*block_size] for i in range(args.num_timesteps - args.repeat_state)] + [x[:, args.num_timesteps*block_size:],]
+                return [x[:, i*block_size:(i+1)*block_size] for i in range(args.num_timesteps - args.repeat_state)] + [x[:, (args.num_timesteps-args.repeat_state)*block_size:],]
             if args.learn_rule:
                 model.split_tensor = spliter
         

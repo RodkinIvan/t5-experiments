@@ -401,9 +401,10 @@ class AssociativeMemoryCell(torch.nn.Module):
                 use_denom=use_denom,
                 gating=gating,
             )
-            
-            print("\n\n\n\n\n\n\n\n\n\nCD", self.constant_depth)
-
+            if act_on and act_type != 'model':
+                kw['act_format']=act_format,
+            if act_on and act_type == 'model' and act_format != 'linear':
+                raise NotImplementedError
             if act_on and (act_type != 'model'):
                 kw['max_hop'] = max_hop
                 kw['constant_depth'] = self.constant_depth
